@@ -116,7 +116,14 @@ exports.handler = async (event, context) => {
     }
 
     // Convert base64 to buffer
-    const buffer = Buffer.from(fileData, 'base64');
+    let base64Data = fileData;
+    
+    // Remove data URL prefix if present
+    if (base64Data.includes(',')) {
+      base64Data = base64Data.split(',')[1];
+    }
+    
+    const buffer = Buffer.from(base64Data, 'base64');
     
     // Read Excel file
     const workbook = XLSX.read(buffer, { type: 'buffer' });
