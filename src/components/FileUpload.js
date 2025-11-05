@@ -5,7 +5,7 @@ import axios from 'axios';
 const FileUpload = ({ onAnalysisStart, onAnalysisComplete, onError }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const analyzeFile = async (file) => {
+  const analyzeFile = useCallback(async (file) => {
     try {
       onAnalysisStart();
       setUploadProgress(10);
@@ -55,7 +55,7 @@ const FileUpload = ({ onAnalysisStart, onAnalysisComplete, onError }) => {
     } finally {
       setUploadProgress(0);
     }
-  };
+  }, [onAnalysisStart, onAnalysisComplete, onError]);
 
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
     if (rejectedFiles.length > 0) {
@@ -67,7 +67,7 @@ const FileUpload = ({ onAnalysisStart, onAnalysisComplete, onError }) => {
       const file = acceptedFiles[0];
       analyzeFile(file);
     }
-  }, [onAnalysisStart, onAnalysisComplete, onError]);
+  }, [analyzeFile, onError]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
