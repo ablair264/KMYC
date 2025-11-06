@@ -111,10 +111,14 @@ function calculateScore(vehicle) {
   const otr = parseNumeric(vehicle.otr_price);
   const mpg = parseNumeric(vehicle.mpg);
   const co2 = parseNumeric(vehicle.co2);
-  const term = parseNumeric(vehicle.term);
-  const mileage = parseNumeric(vehicle.mileage);
+  let term = parseNumeric(vehicle.term);
+  let mileage = parseNumeric(vehicle.mileage);
 
-  if (monthly === 0 || p11d === 0 || term === 0) return 0;
+  // Fallback: if term/mileage missing, use defaults for scoring
+  if (term === 0) term = 36; // Default 36 month term
+  if (mileage === 0) mileage = 10000; // Default 10k miles
+
+  if (monthly === 0 || p11d === 0) return 0;
 
   // Calculate total lease cost
   const totalLeaseCost = monthly * term;
@@ -263,9 +267,10 @@ exports.handler = async (event, context) => {
       }
     }
 
-    // If no headers found, use fallback column indices and start from row 0
-    if (Object.keys(columnIndices).length < 2) {
-      console.log('No headers found, using fallback column indices');
+    // If no headers found OR essential fields missing, use fallback column indices
+    if (Object.keys(columnIndices).length < 2 || !columnIndices.term || !columnIndices.mileage) {
+      console.log('No headers found or missing essential fields, using fallback column indices');
+      console.log('Found columns:', columnIndices);
       columnIndices = FALLBACK_COLUMN_INDICES;
       headerRowIndex = -1; // Start processing from row 0
       detectedFormat = { format: 'fallback', scores: {} };
@@ -295,13 +300,17 @@ exports.handler = async (event, context) => {
         format: detectedFormat?.format || 'unknown'
       };
 
-      // Debug logging for first row only
-      if (i === headerRowIndex + 1) {
-        console.log('First vehicle:', {
+      // Debug logging for first few rows
+      if (i <= headerRowIndex + 3) {
+        console.log(`Row ${i} data:`, {
           manufacturer: vehicle.manufacturer,
           monthly_payment: vehicle.monthly_payment,
           p11d: vehicle.p11d,
-          otr_price: vehicle.otr_price
+          term: vehicle.term,
+          mileage: vehicle.mileage,
+          rawTerm: row[columnIndices.term],
+          rawMileage: row[columnIndices.mileage],
+          columnIndices: columnIndices
         });
       }
 
