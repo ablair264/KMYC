@@ -162,6 +162,79 @@ function calculateScore(vehicle) {
   return Math.round(totalScore * 10) / 10;
 }
 
+// Provide a full score breakdown for transparency in reports
+function computeScoreBreakdown(vehicle) {
+  const monthly = parseNumeric(vehicle.monthly_payment);
+  const p11d = parseNumeric(vehicle.p11d);
+  const mpg = parseNumeric(vehicle.mpg);
+  const co2 = parseNumeric(vehicle.co2);
+  const otr = parseNumeric(vehicle.otr_price);
+  let term = parseNumeric(vehicle.term);
+  let mileage = parseNumeric(vehicle.mileage);
+
+  const usedDefaultTerm = term === 0;
+  const usedDefaultMileage = mileage === 0;
+  if (usedDefaultTerm) term = 36;
+  if (usedDefaultMileage) mileage = 10000;
+
+  // Base calculations
+  const totalLeaseCost = monthly * term;
+  const totalCostVsValue = p11d > 0 ? (totalLeaseCost / p11d) * 100 : 0;
+
+  // Component scores (mirrors calculateScore)
+  let costEfficiencyScore;
+  if (p11d === 0 || monthly === 0) costEfficiencyScore = 0;
+  else if (totalCostVsValue <= 30) costEfficiencyScore = 100;
+  else if (totalCostVsValue <= 40) costEfficiencyScore = 90;
+  else if (totalCostVsValue <= 50) costEfficiencyScore = 75;
+  else if (totalCostVsValue <= 60) costEfficiencyScore = 60;
+  else if (totalCostVsValue <= 70) costEfficiencyScore = 40;
+  else if (totalCostVsValue <= 80) costEfficiencyScore = 20;
+  else costEfficiencyScore = 0;
+
+  const mileageScore = mileage > 0 ? Math.min(100, (mileage / 15000) * 100) : 50;
+  const fuelScore = mpg > 0 ? Math.min(100, mpg * 1.5) : 50;
+  const emissionsScore = co2 > 0 ? Math.max(0, 100 - co2 / 2) : 50;
+
+  const weights = { costEfficiency: 0.6, mileage: 0.2, fuel: 0.1, emissions: 0.1 };
+  const score = Math.round((
+    costEfficiencyScore * weights.costEfficiency +
+    mileageScore * weights.mileage +
+    fuelScore * weights.fuel +
+    emissionsScore * weights.emissions
+  ) * 10) / 10;
+
+  return {
+    score,
+    breakdown: {
+      inputs: {
+        monthly: monthly || 0,
+        term,
+        mileage,
+        p11d: p11d || 0,
+        otr: otr || 0,
+        mpg: mpg || 0,
+        co2: co2 || 0,
+        defaultsApplied: {
+          term: usedDefaultTerm,
+          mileage: usedDefaultMileage
+        }
+      },
+      derived: {
+        totalLeaseCost: Math.round(totalLeaseCost * 100) / 100,
+        totalCostVsP11DPercent: Math.round(totalCostVsValue * 10) / 10
+      },
+      components: {
+        costEfficiencyScore,
+        mileageScore,
+        fuelScore,
+        emissionsScore
+      },
+      weights
+    }
+  };
+}
+
 function getScoreCategory(score) {
   if (score >= 90) return { category: 'Exceptional', color: '#10B981', emoji: '🌟' };
   if (score >= 70) return { category: 'Excellent', color: '#22C55E', emoji: '🟢' };
@@ -404,8 +477,11 @@ exports.handler = async (event, context) => {
       }
     };
 
-    // Get top 100 deals
-    const topDeals = vehicles.slice(0, 100);
+    // Get top 100 deals and attach score breakdown for transparency
+    const topDeals = vehicles.slice(0, 100).map(v => {
+      const { score, breakdown } = computeScoreBreakdown(v);
+      return { ...v, score, scoreInfo: getScoreCategory(score), scoreBreakdown: breakdown };
+    });
     
     // Create ultra-lightweight version - only essential fields for top 1000 vehicles
     const lightweightVehicles = vehicles.slice(0, 1000).map(v => ({
@@ -419,6 +495,15 @@ exports.handler = async (event, context) => {
       c: v.scoreInfo.category.substring(0, 4) // Category (truncated)
     }));
 
+    // Optional: expose scoring method for UI display
+    const scoringInfo = {
+      baseline: 'P11D',
+      includesVAT: false,
+      includesInitialPayment: false,
+      formula: 'Score = 0.6*CostEfficiency + 0.2*Mileage + 0.1*Fuel + 0.1*Emissions',
+      weights: { costEfficiency: 0.6, mileage: 0.2, fuel: 0.1, emissions: 0.1 }
+    };
+
     const results = {
       success: true,
       fileName,
@@ -427,6 +512,7 @@ exports.handler = async (event, context) => {
       allVehicles: lightweightVehicles,
       columnMappings: columnIndices,
       detectedFormat: detectedFormat,
+      scoringInfo,
       processedAt: new Date().toISOString()
     };
 

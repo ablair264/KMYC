@@ -67,7 +67,8 @@ const ResultsDisplay = ({ results, onReset }) => {
     return '#EF4444';
   };
 
-  const { stats, topDeals, allVehicles, fileName, detectedFormat } = results;
+  const { stats, topDeals, allVehicles, fileName, detectedFormat, scoringInfo } = results;
+  const [expandedRow, setExpandedRow] = useState(null);
 
   return (
     <div className="results-container">
@@ -78,6 +79,13 @@ const ResultsDisplay = ({ results, onReset }) => {
           <div className="format-info">
             <span className="format-badge">
               📋 Format: {detectedFormat.format.charAt(0).toUpperCase() + detectedFormat.format.slice(1)}
+            </span>
+          </div>
+        )}
+        {scoringInfo && (
+          <div className="format-info" style={{ marginTop: '8px' }}>
+            <span className="format-badge">
+              🧮 Scoring: {scoringInfo.formula}
             </span>
           </div>
         )}
@@ -222,29 +230,79 @@ const ResultsDisplay = ({ results, onReset }) => {
                   <th>MPG</th>
                   <th>CO2</th>
                   <th>Score</th>
+                  <th>Details</th>
                 </tr>
               </thead>
               <tbody>
                 {topDeals.map((vehicle, index) => (
-                  <tr key={index}>
-                    <td className="rank-cell">#{index + 1}</td>
-                    <td className="vehicle-cell">
-                      <strong>{vehicle.manufacturer}</strong><br />
-                      <span className="model-name">{vehicle.model}</span>
-                    </td>
-                    <td className="payment-cell">{formatCurrency(vehicle.monthly_payment)}</td>
-                    <td>{formatCurrency(vehicle.p11d)}</td>
-                    <td>{formatNumber(vehicle.mpg)}</td>
-                    <td>{formatNumber(vehicle.co2)}</td>
-                    <td>
-                      <span 
-                        className="score-badge" 
-                        style={{ backgroundColor: getScoreColor(vehicle.score) }}
-                      >
-                        {vehicle.score}
-                      </span>
-                    </td>
-                  </tr>
+                  <React.Fragment key={index}>
+                    <tr>
+                      <td className="rank-cell">#{index + 1}</td>
+                      <td className="vehicle-cell">
+                        <strong>{vehicle.manufacturer}</strong><br />
+                        <span className="model-name">{vehicle.model}</span>
+                      </td>
+                      <td className="payment-cell">{formatCurrency(vehicle.monthly_payment)}</td>
+                      <td>{formatCurrency(vehicle.p11d)}</td>
+                      <td>{formatNumber(vehicle.mpg)}</td>
+                      <td>{formatNumber(vehicle.co2)}</td>
+                      <td>
+                        <span 
+                          className="score-badge" 
+                          style={{ backgroundColor: getScoreColor(vehicle.score) }}
+                        >
+                          {vehicle.score}
+                        </span>
+                      </td>
+                      <td>
+                        <button 
+                          className="toggle-button"
+                          onClick={() => setExpandedRow(expandedRow === index ? null : index)}
+                        >
+                          {expandedRow === index ? 'Hide' : 'View'}
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedRow === index && vehicle.scoreBreakdown && (
+                      <tr>
+                        <td colSpan={8}>
+                          <div className="breakdown-panel">
+                            <div className="breakdown-grid">
+                              <div>
+                                <h4>Inputs</h4>
+                                <div>Monthly: {formatCurrency(vehicle.scoreBreakdown.inputs.monthly)}</div>
+                                <div>Term: {formatNumber(vehicle.scoreBreakdown.inputs.term)} months {vehicle.scoreBreakdown.inputs.defaultsApplied.term ? '(defaulted)' : ''}</div>
+                                <div>Mileage: {formatNumber(vehicle.scoreBreakdown.inputs.mileage)} {vehicle.scoreBreakdown.inputs.defaultsApplied.mileage ? '(defaulted)' : ''}</div>
+                                <div>P11D: {formatCurrency(vehicle.scoreBreakdown.inputs.p11d)}</div>
+                                <div>OTR: {formatCurrency(vehicle.scoreBreakdown.inputs.otr)}</div>
+                                <div>MPG: {formatNumber(vehicle.scoreBreakdown.inputs.mpg)}</div>
+                                <div>CO2: {formatNumber(vehicle.scoreBreakdown.inputs.co2)}</div>
+                              </div>
+                              <div>
+                                <h4>Derived</h4>
+                                <div>Total Lease Cost: {formatCurrency(vehicle.scoreBreakdown.derived.totalLeaseCost)}</div>
+                                <div>Total Cost vs P11D: {vehicle.scoreBreakdown.derived.totalCostVsP11DPercent}%</div>
+                              </div>
+                              <div>
+                                <h4>Component Scores</h4>
+                                <div>Cost Efficiency: {vehicle.scoreBreakdown.components.costEfficiencyScore}</div>
+                                <div>Mileage: {vehicle.scoreBreakdown.components.mileageScore}</div>
+                                <div>Fuel: {vehicle.scoreBreakdown.components.fuelScore}</div>
+                                <div>Emissions: {vehicle.scoreBreakdown.components.emissionsScore}</div>
+                              </div>
+                              <div>
+                                <h4>Weights</h4>
+                                <div>Cost: {Math.round(vehicle.scoreBreakdown.weights.costEfficiency*100)}%</div>
+                                <div>Mileage: {Math.round(vehicle.scoreBreakdown.weights.mileage*100)}%</div>
+                                <div>Fuel: {Math.round(vehicle.scoreBreakdown.weights.fuel*100)}%</div>
+                                <div>Emissions: {Math.round(vehicle.scoreBreakdown.weights.emissions*100)}%</div>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
