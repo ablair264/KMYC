@@ -7,10 +7,27 @@ const ResultsDisplay = ({ results, onReset }) => {
   const downloadCSV = (data, filename) => {
     if (!data || data.length === 0) return;
 
-    const headers = Object.keys(data[0]);
+    // Convert compressed data back to readable format for CSV
+    const expandedData = data.map(item => {
+      if (item.m) { // Compressed format
+        return {
+          Manufacturer: item.m,
+          Model: item.d,
+          'Monthly Payment': item.p,
+          'P11D Value': item.v,
+          'Term (months)': item.t,
+          'Mileage': item.mi,
+          'Score': item.s,
+          'Category': item.c
+        };
+      }
+      return item; // Already in full format (topDeals)
+    });
+
+    const headers = Object.keys(expandedData[0]);
     const csvContent = [
       headers.join(','),
-      ...data.map(row => 
+      ...expandedData.map(row => 
         headers.map(header => {
           const value = row[header];
           if (typeof value === 'object' && value !== null) {
@@ -263,39 +280,51 @@ const ResultsDisplay = ({ results, onReset }) => {
                   <th>Vehicle</th>
                   <th>Monthly Payment</th>
                   <th>P11D Price</th>
-                  <th>OTR Price</th>
-                  <th>MPG</th>
-                  <th>CO2</th>
+                  <th>Term</th>
+                  <th>Mileage</th>
                   <th>Category</th>
                 </tr>
               </thead>
               <tbody>
-                {(showFullData ? allVehicles : allVehicles.slice(0, 50)).map((vehicle, index) => (
+                {(showFullData ? allVehicles : allVehicles.slice(0, 50)).map((vehicle, index) => {
+                  // Handle compressed format
+                  const v = vehicle.m ? {
+                    manufacturer: vehicle.m,
+                    model: vehicle.d,
+                    monthly_payment: vehicle.p,
+                    p11d: vehicle.v,
+                    score: vehicle.s,
+                    term: vehicle.t,
+                    mileage: vehicle.mi,
+                    scoreInfo: { category: vehicle.c }
+                  } : vehicle;
+                  
+                  return (
                   <tr key={index}>
                     <td>
                       <span 
                         className="score-badge" 
-                        style={{ backgroundColor: getScoreColor(vehicle.score) }}
+                        style={{ backgroundColor: getScoreColor(v.score) }}
                       >
-                        {vehicle.score}
+                        {v.score}
                       </span>
                     </td>
                     <td className="vehicle-cell">
-                      <strong>{vehicle.manufacturer}</strong><br />
-                      <span className="model-name">{vehicle.model}</span>
+                      <strong>{v.manufacturer}</strong><br />
+                      <span className="model-name">{v.model}</span>
                     </td>
-                    <td className="payment-cell">{formatCurrency(vehicle.monthly_payment)}</td>
-                    <td>{formatCurrency(vehicle.p11d)}</td>
-                    <td>{formatCurrency(vehicle.otr_price)}</td>
-                    <td>{formatNumber(vehicle.mpg)}</td>
-                    <td>{formatNumber(vehicle.co2)}</td>
+                    <td className="payment-cell">{formatCurrency(v.monthly_payment)}</td>
+                    <td>{formatCurrency(v.p11d)}</td>
+                    <td>{v.term || 'N/A'} months</td>
+                    <td>{formatNumber(v.mileage)}</td>
                     <td>
                       <span className="category-badge">
-                        {vehicle.scoreInfo.emoji} {vehicle.scoreInfo.category}
+                        {v.scoreInfo.category}
                       </span>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

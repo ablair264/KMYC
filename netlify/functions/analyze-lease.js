@@ -344,21 +344,16 @@ exports.handler = async (event, context) => {
     // Get top 100 deals
     const topDeals = vehicles.slice(0, 100);
     
-    // Create lightweight version for response - remove heavy fields
-    const lightweightVehicles = vehicles.map(v => ({
-      manufacturer: v.manufacturer,
-      model: v.model.substring(0, 100), // Truncate long model names
-      monthly_payment: v.monthly_payment,
-      p11d: v.p11d,
-      otr_price: v.otr_price,
-      mpg: v.mpg,
-      co2: v.co2,
-      term: v.term,
-      mileage: v.mileage,
-      score: v.score,
-      scoreInfo: v.scoreInfo,
-      total_lease_cost: parseNumeric(v.monthly_payment) * parseNumeric(v.term),
-      cost_vs_value_percent: ((parseNumeric(v.monthly_payment) * parseNumeric(v.term)) / parseNumeric(v.p11d) * 100).toFixed(1)
+    // Create ultra-lightweight version - only essential fields for top 1000 vehicles
+    const lightweightVehicles = vehicles.slice(0, 1000).map(v => ({
+      m: v.manufacturer.substring(0, 15), // Manufacturer (truncated)
+      d: v.model.substring(0, 40),        // Model (truncated) 
+      p: Math.round(parseNumeric(v.monthly_payment)), // Monthly payment (rounded)
+      v: Math.round(parseNumeric(v.p11d)),           // P11D value (rounded)
+      t: parseNumeric(v.term),            // Term
+      mi: parseNumeric(v.mileage),        // Mileage
+      s: v.score,                         // Score
+      c: v.scoreInfo.category.substring(0, 4) // Category (truncated)
     }));
 
     const results = {
