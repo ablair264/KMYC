@@ -250,12 +250,19 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('Analysis error:', error);
+    console.error('Error stack:', error.stack);
+    
+    let errorMessage = 'Failed to analyze file';
+    if (error.message) {
+      errorMessage += ': ' + error.message;
+    }
     
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
-        error: 'Failed to analyze file: ' + error.message 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
     };
   }
