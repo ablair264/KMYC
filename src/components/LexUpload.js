@@ -72,31 +72,49 @@ const parseNumber = (v) => {
   return isNaN(n) ? 0 : n;
 };
 
+// Expanded column synonyms for Lex CSVs
 const COLUMN_MAPPINGS = {
   manufacturer: ['MANUFACTURER', 'MAKE', 'BRAND'],
-  model: ['VEHICLE DESCRIPTION', 'DERIVATIVE', 'MODEL', 'DESCRIPTION', 'VEHICLE'],
-  term: ['TERM', 'MONTHS', 'CONTRACT LENGTH'],
-  mileage: ['ANNUAL_MILEAGE', 'ANNUAL MILEAGE', 'MILEAGE', 'MILEAGE ALLOWANCE'],
-  p11d: ['P11D', 'LIST PRICE', 'RRP', 'MRP'],
-  otr: ['OTR', 'OTR PRICE', 'ON THE ROAD'],
-  co2: ['CO2', 'CO2 EMISSIONS', 'EMISSIONS'],
-  mpg: ['MPG COMBINED', 'MPG', 'FUEL ECONOMY'],
-  fuel_type: ['FUEL TYPE', 'FUELTYPE'],
-  miles_per_kwh: ['MILES/KWH', 'MI/KWH', 'MILES PER KWH'],
-  kwh_per_100km: ['KWH/100KM', 'KWH/100 KM', 'CONSUMPTION KWH/100KM', 'KWH_PER_100KM'],
-  electric_range: ['EAER', 'ELECTRIC RANGE', 'EV RANGE', 'ZERO EMISSION RANGE (EAER)'],
-  monthly_cm: ['NET RENTAL CM', 'CM', 'CUSTOMER MONTHLY'],
-  monthly_wm: ['NET RENTAL WM', 'WM', 'WHOLESALE MONTHLY'],
-  upfront: ['UPFRONT', 'INITIAL PAYMENT', 'DEPOSIT'],
+  model: ['VEHICLE DESCRIPTION', 'DERIVATIVE', 'MODEL', 'DESCRIPTION', 'VEHICLE', 'GRADE', 'VARIANT'],
+  term: ['TERM', 'MONTHS', 'CONTRACT LENGTH', 'TERM (MONTHS)', 'TERM (MTHS)'],
+  mileage: ['ANNUAL_MILEAGE', 'ANNUAL MILEAGE', 'MILEAGE', 'MILEAGE ALLOWANCE', 'MILES PER ANNUM', 'P.A. MILEAGE'],
+  p11d: ['P11D', 'P11D PRICE', 'P11D VALUE', 'LIST PRICE (P11D)', 'LIST PRICE', 'RRP', 'MRP'],
+  otr: ['OTR', 'OTR PRICE', 'ON THE ROAD', 'ON THE ROAD PRICE', 'OTR (INC METALLIC)', 'OTR (INCLUDING METALLIC)', 'OTR PRICE (INC PAINT)', 'RETAIL OTR'],
+  co2: ['CO2', 'CO2 EMISSIONS', 'EMISSIONS', 'CO2 G/KM', 'CO2 (G/KM)'],
+  mpg: ['MPG COMBINED', 'MPG', 'FUEL ECONOMY', 'COMBINED MPG', 'WLTP MPG', 'MPG (WLTP)'],
+  fuel_type: ['FUEL TYPE', 'FUELTYPE', 'FUEL'],
+  miles_per_kwh: ['MILES/KWH', 'MI/KWH', 'MILES PER KWH', 'MILES PER KWH (MI/KWH)'],
+  kwh_per_100km: ['KWH/100KM', 'KWH/100 KM', 'CONSUMPTION KWH/100KM', 'KWH_PER_100KM', 'KWH / 100KM'],
+  electric_range: ['EAER', 'ELECTRIC RANGE', 'EV RANGE', 'ZERO EMISSION RANGE (EAER)', 'EAER (MI)', 'EAER MILES'],
+  // Prefer customer/driver monthly; fallback to generic rental names
+  monthly_cm: [
+    'NET RENTAL CM', 'CM', 'CUSTOMER MONTHLY', 'CUSTOMER RENTAL', 'CUSTOMER RENTAL EX VAT',
+    'CUSTOMER MONTHLY EX VAT', 'DRIVER RENTAL', 'DRIVER MONTHLY', 'NET CUSTOMER RENTAL',
+    'MONTHLY RENTAL', 'MONTHLY RENTAL EX VAT', 'MONTHLY PAYMENT', 'PAYMENT', 'RENTAL EX VAT',
+    '3 + RENTAL EX VAT', '3+RENTAL'
+  ],
+  monthly_wm: [
+    'NET RENTAL WM', 'WM', 'WHOLESALE MONTHLY', 'WHOLESALE RENTAL', 'SUPPLIER RENTAL', 'SUPPLIER MONTHLY',
+    'B2B RENTAL', 'WM RENTAL', 'BUSINESS RENTAL'
+  ],
+  upfront: ['UPFRONT', 'UP FRONT', 'INITIAL PAYMENT', 'DEPOSIT', 'INITIAL RENTAL'],
   insurance_group: ['INSURANCE GROUP', 'INSURANCE', 'INS GRP']
 };
 
 const findColumnIndex = (headers, names) => {
+  const normalized = headers.map(h => (h ? String(h).toUpperCase().trim() : ''));
   const map = {};
-  headers.forEach((h, i) => { if (h) map[String(h).toUpperCase().trim()] = i; });
+  normalized.forEach((h, i) => { if (h) map[h] = i; });
+  // 1) Exact match
   for (const n of names) {
     const key = n.toUpperCase().trim();
     if (Object.prototype.hasOwnProperty.call(map, key)) return map[key];
+  }
+  // 2) Fuzzy contains match (helps with variants like "RENTAL EX VAT 9+35")
+  for (const n of names) {
+    const key = n.toUpperCase().trim();
+    const idx = normalized.findIndex(h => h.includes(key));
+    if (idx !== -1) return idx;
   }
   return -1;
 };
@@ -107,6 +125,19 @@ function buildColumnIndices(headers) {
     const i = findColumnIndex(headers, names);
     if (i !== -1) idx[k] = i;
   });
+  // Heuristic: if neither monthly_cm nor monthly_wm found, try to pick a generic rental column
+  if (idx.monthly_cm === undefined && idx.monthly_wm === undefined) {
+    const normalized = headers.map(h => (h ? String(h).toUpperCase().trim() : ''));
+    const rentalCandidates = normalized.map((h, i) => ({ h, i }))
+      .filter(({ h }) => h.includes('RENTAL') || h.includes('MONTHLY'));
+    // Prefer those that look like customer/driver, avoid 'WHOLESALE'/'WM'
+    const preferred = rentalCandidates.find(({ h }) => (
+      (h.includes('CUSTOMER') || h.includes('DRIVER') || h.includes('CM') || h.includes('MONTHLY')) &&
+      !(h.includes('WHOLESALE') || h.includes('WM') || h.includes('SUPPLIER'))
+    ));
+    if (preferred) idx.monthly_cm = preferred.i;
+    else if (rentalCandidates[0]) idx.monthly_cm = rentalCandidates[0].i;
+  }
   return idx;
 }
 
@@ -270,8 +301,15 @@ function LexUpload({ onAnalysisStart, onAnalysisComplete, onError }) {
         // Skip empty lines
         if (!arr || arr.length === 0 || (arr.length === 1 && arr[0] === '')) return;
         if (!header) {
-          header = arr.map(x => (x || '').toString().trim());
-          indices = buildColumnIndices(header);
+          // Try to detect the true header row (skip preambles)
+          const candidate = arr.map(x => (x || '').toString().trim());
+          const candidateIdx = buildColumnIndices(candidate);
+          const essentialKeys = ['manufacturer', 'model', 'monthly_cm', 'monthly_wm', 'p11d', 'term', 'mileage'];
+          const matches = essentialKeys.reduce((acc, k) => acc + (candidateIdx[k] !== undefined ? 1 : 0), 0);
+          if (matches >= 3 || (candidateIdx.manufacturer !== undefined && candidateIdx.model !== undefined)) {
+            header = candidate;
+            indices = candidateIdx;
+          }
           return;
         }
         // Row processed
@@ -287,7 +325,8 @@ function LexUpload({ onAnalysisStart, onAnalysisComplete, onError }) {
           manufacturer,
           model,
           monthly_payment: monthly,
-          p11d,
+          // Fallback: if P11D missing (common on some LCV data), use OTR as proxy
+          p11d: p11d || (get('otr') || ''),
           otr_price: get('otr'),
           mpg: get('mpg'),
           co2: get('co2'),
