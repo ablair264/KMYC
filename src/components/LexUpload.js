@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 
 // Minimal CSV streaming parser that handles quotes and large files
 function streamCsvFile(file, onRow, onProgress, options = {}) {
@@ -237,11 +237,11 @@ function LexUpload({ onAnalysisStart, onAnalysisComplete, onError }) {
   const [useInsuranceWeight, setUseInsuranceWeight] = useState(false);
   const cancelledRef = useRef(false);
 
-  const assumptions = {
+  const assumptions = useMemo(() => ({
     electricityPricePerKwh: 0.30, // £/kWh
     petrolPricePerLitre: 1.60,    // £/L
     dieselPricePerLitre: 1.70     // £/L
-  };
+  }), []);
 
   const analyzeCsv = useCallback(async (file) => {
     try {
@@ -251,8 +251,6 @@ function LexUpload({ onAnalysisStart, onAnalysisComplete, onError }) {
 
       let header = null;
       let indices = {};
-      let rowCount = 0;
-      let keptCount = 0;
       // streaming aggregates
       let totalVehicles = 0;
       let scoreSum = 0;
@@ -276,7 +274,7 @@ function LexUpload({ onAnalysisStart, onAnalysisComplete, onError }) {
           indices = buildColumnIndices(header);
           return;
         }
-        rowCount++;
+        // Row processed
         // Map fields
         const get = (key) => indices[key] !== undefined ? arr[indices[key]] : '';
         const monthly = get('monthly_cm') || get('monthly_wm');
@@ -328,7 +326,7 @@ function LexUpload({ onAnalysisStart, onAnalysisComplete, onError }) {
           s: score,
           c: vehicle.scoreInfo.category.substring(0, 4)
         });
-        keptCount++;
+        // Kept vehicle
       };
 
       await streamCsvFile(file, onRow, (p) => setProgress(p));
@@ -382,7 +380,7 @@ function LexUpload({ onAnalysisStart, onAnalysisComplete, onError }) {
       setParsing(false);
       setProgress(0);
     }
-  }, [onAnalysisStart, onAnalysisComplete, onError]);
+  }, [onAnalysisStart, onAnalysisComplete, onError, assumptions, useInsuranceWeight]);
 
   const onFileChange = useCallback((e) => {
     const file = e.target.files && e.target.files[0];

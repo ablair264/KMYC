@@ -80,7 +80,7 @@ const FileUpload = ({
     } finally {
       setUploadProgress(0);
     }
-  }, [onAnalysisStart, onAnalysisComplete, onError]);
+  }, [onAnalysisStart, onAnalysisComplete, onError, endpoint, showInsuranceToggle, useInsuranceWeight]);
 
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
     if (rejectedFiles.length > 0) {
