@@ -47,19 +47,20 @@ const FALLBACK_COLUMN_INDICES = {
 };
 
 function findColumn(headers, possibleNames) {
+  const normalized = headers.map(h => (h && typeof h === 'string') ? h.toUpperCase().trim() : '');
   const headerMap = {};
-  headers.forEach((header, index) => {
-    if (header && typeof header === 'string') {
-      headerMap[header.toUpperCase().trim()] = index;
-    }
-  });
-  
+  normalized.forEach((h, i) => { if (h) headerMap[h] = i; });
+
+  // Exact match first
   for (const name of possibleNames) {
-    const normalizedName = name.toUpperCase().trim();
-    // Use hasOwnProperty so index 0 is not treated as falsy
-    if (Object.prototype.hasOwnProperty.call(headerMap, normalizedName)) {
-      return headerMap[normalizedName];
-    }
+    const key = name.toUpperCase().trim();
+    if (Object.prototype.hasOwnProperty.call(headerMap, key)) return headerMap[key];
+  }
+  // Fallback: fuzzy contains match (handles variants like "LIST PRICE (P11D)" or "RENTAL EX VAT 9+35")
+  for (const name of possibleNames) {
+    const key = name.toUpperCase().trim();
+    const idx = normalized.findIndex(h => h.includes(key));
+    if (idx !== -1) return idx;
   }
   return -1;
 }
@@ -383,6 +384,20 @@ exports.handler = async (event, context) => {
       console.log('Headers detected:', columnIndices);
     }
 
+    // Heuristic: if monthly_payment not detected, guess a rental column from the header row
+    if (columnIndices.monthly_payment === undefined) {
+      const headerRow = jsonData[headerRowIndex] || [];
+      const norm = (headerRow || []).map(h => (h && typeof h === 'string') ? h.toUpperCase().trim() : '');
+      const candidates = norm.map((h, i) => ({ h, i }))
+        .filter(({ h }) => h.includes('RENTAL') || h.includes('MONTHLY'));
+      const preferred = candidates.find(({ h }) => (
+        (h.includes('CUSTOMER') || h.includes('DRIVER') || h.includes('CM') || h.includes('MONTHLY')) &&
+        !(h.includes('WHOLESALE') || h.includes('WM') || h.includes('SUPPLIER'))
+      ));
+      if (preferred) columnIndices.monthly_payment = preferred.i;
+      else if (candidates[0]) columnIndices.monthly_payment = candidates[0].i;
+    }
+
     // Helper to compute insurance score from group (1 best -> 100, 50 worst -> 0)
     const computeInsuranceScoreFromGroup = (grp) => {
       const g = parseNumeric(grp);
@@ -417,6 +432,11 @@ exports.handler = async (event, context) => {
         upfront: row[columnIndices.upfront] || '',
         format: detectedFormat?.format || 'unknown'
       };
+
+      // Fallback: use OTR as P11D proxy if P11D missing/zero
+      if (parseNumeric(vehicle.p11d) === 0 && parseNumeric(vehicle.otr_price) > 0) {
+        vehicle.p11d = vehicle.otr_price;
+      }
 
       // Debug logging for first few rows
       if (i <= headerRowIndex + 5) {

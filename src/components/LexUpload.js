@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 
 // Minimal CSV streaming parser that handles quotes and large files
 function streamCsvFile(file, onRow, onProgress, options = {}) {
@@ -262,10 +263,11 @@ function scoreVehicle(v, assumptions, opts = {}) {
   };
 }
 
-function LexUpload({ onAnalysisStart, onAnalysisComplete, onError }) {
+function LexUpload({ onAnalysisStart, onAnalysisComplete, onError, endpoint = '/.netlify/functions/analyze-lease' }) {
   const [progress, setProgress] = useState(0);
   const [parsing, setParsing] = useState(false);
   const [useInsuranceWeight, setUseInsuranceWeight] = useState(false);
+  const [useServer] = useState(true);
   const cancelledRef = useRef(false);
 
   const assumptions = useMemo(() => ({
@@ -275,6 +277,7 @@ function LexUpload({ onAnalysisStart, onAnalysisComplete, onError }) {
   }), []);
 
   const analyzeCsv = useCallback(async (file) => {
+    // Local streaming CSV analysis (no upload)
     try {
       onAnalysisStart();
       setParsing(true);
@@ -421,27 +424,70 @@ function LexUpload({ onAnalysisStart, onAnalysisComplete, onError }) {
     }
   }, [onAnalysisStart, onAnalysisComplete, onError, assumptions, useInsuranceWeight]);
 
-  const onFileChange = useCallback((e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.csv')) {
+  const analyzeCsvViaFunction = useCallback(async (file) => {
+    // Route CSV through Netlify function (server analysis)
+    try {
+      onAnalysisStart();
+      setParsing(true);
+      cancelledRef.current = false;
+
+      const toBase64 = (f) => new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(f);
+      });
+
+      const dataUrl = await toBase64(file);
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileData: dataUrl,
+          fileName: file.name,
+          options: { insuranceWeight: useInsuranceWeight ? 0.05 : 0 }
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Server analysis failed');
+      }
+      const results = await res.json();
+      onAnalysisComplete({ provider: 'Lex', ...results });
+    } catch (e) {
+      console.error(e);
+      onError(e.message || 'Failed to analyze file');
+    } finally {
+      setParsing(false);
+    }
+  }, [endpoint, onAnalysisStart, onAnalysisComplete, onError, useInsuranceWeight]);
+
+  const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
+    if (rejectedFiles && rejectedFiles.length > 0) {
       onError('Please choose a .csv file');
       return;
     }
-    // Large files supported; warn if > 100MB
-    if (file.size > 100 * 1024 * 1024) {
-      // ok, we can still process locally
+    if (acceptedFiles && acceptedFiles.length > 0) {
+      const file = acceptedFiles[0];
+      analyzeCsvViaFunction(file);
     }
-    analyzeCsv(file);
-  }, [analyzeCsv, onError]);
+  }, [analyzeCsvViaFunction, onError]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'text/csv': ['.csv'] },
+    multiple: false,
+    maxFiles: 1
+  });
 
   return (
     <div className="file-upload-container">
-      <div className="dropzone">
+      <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''}`}>
+        <input {...getInputProps()} />
         <div className="upload-content">
           <div className="upload-icon">🧾</div>
           <h2>Upload Lex Generic Ratebook (CSV)</h2>
-          <p>Local, streaming analysis — no upload. Handles very large CSVs.</p>
+          <p>Analyzed via Netlify function (server)</p>
 
           <div className="file-requirements">
             <h3>File Requirements:</h3>
@@ -452,16 +498,14 @@ function LexUpload({ onAnalysisStart, onAnalysisComplete, onError }) {
             </ul>
           </div>
 
-          <label className="upload-button" style={{ cursor: 'pointer' }}>
-            Choose CSV File
-            <input type="file" accept=".csv,text/csv" onChange={onFileChange} style={{ display: 'none' }} />
-          </label>
+          <button className="upload-button">Choose CSV File</button>
           <div style={{ marginTop: '0.75rem' }}>
             <label style={{ color: '#2d3748', fontWeight: 500 }}>
               <input type="checkbox" checked={useInsuranceWeight} onChange={(e)=>setUseInsuranceWeight(e.target.checked)} style={{ marginRight: '0.5rem' }} />
               Include Insurance Group in score (5% weight)
             </label>
           </div>
+          
         </div>
       </div>
 
