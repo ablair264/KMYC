@@ -35,7 +35,9 @@ const FALLBACK_COLUMN_INDICES = {
   p11d: 5,           // Column 6 - "45,005.00" (P11D price)
   otr_price: 17,     // Column 18 - "33,918.76" (OTR price)
   mpg: 25,           // Column 26 - "706.20" (MPG)
-  co2: 10            // Column 11 - "10" (CO2 emissions)
+  co2: 10,           // Column 11 - "10" (CO2 emissions)
+  term: 0,           // Column 1 - "36" (months)
+  mileage: 1         // Column 2 - "10000" (annual mileage)
 };
 
 function findColumn(headers, possibleNames) {
@@ -109,26 +111,43 @@ function calculateScore(vehicle) {
   const otr = parseNumeric(vehicle.otr_price);
   const mpg = parseNumeric(vehicle.mpg);
   const co2 = parseNumeric(vehicle.co2);
+  const term = parseNumeric(vehicle.term);
+  const mileage = parseNumeric(vehicle.mileage);
 
-  if (monthly === 0 || p11d === 0) return 0;
+  if (monthly === 0 || p11d === 0 || term === 0) return 0;
 
-  // Monthly payment as percentage of P11D (lower is better)
-  const monthlyVsMsrp = Math.max(0, 100 - (monthly / p11d * 100));
+  // Calculate total lease cost
+  const totalLeaseCost = monthly * term;
   
-  // Monthly payment as percentage of OTR (lower is better)
-  const monthlyVsOtr = otr > 0 ? Math.max(0, 100 - (monthly / otr * 100)) : monthlyVsMsrp;
+  // Calculate total cost as percentage of vehicle value (lower is better)
+  const totalCostVsValue = (totalLeaseCost / p11d) * 100;
+  
+  // Score based on total lease cost efficiency (lower percentage = better deal)
+  // Excellent deals: <40% of vehicle value, Poor deals: >80% of vehicle value
+  let costEfficiencyScore;
+  if (totalCostVsValue <= 30) costEfficiencyScore = 100;
+  else if (totalCostVsValue <= 40) costEfficiencyScore = 90;
+  else if (totalCostVsValue <= 50) costEfficiencyScore = 75;
+  else if (totalCostVsValue <= 60) costEfficiencyScore = 60;
+  else if (totalCostVsValue <= 70) costEfficiencyScore = 40;
+  else if (totalCostVsValue <= 80) costEfficiencyScore = 20;
+  else costEfficiencyScore = 0;
+  
+  // Mileage allowance score (higher allowance = better value)
+  const mileageScore = mileage > 0 ? Math.min(100, (mileage / 15000) * 100) : 50;
   
   // Fuel efficiency score (higher MPG is better)
-  const fuelScore = Math.min(100, mpg * 2);
+  const fuelScore = mpg > 0 ? Math.min(100, mpg * 1.5) : 50;
   
   // Emissions score (lower CO2 is better)
-  const emissionsScore = co2 > 0 ? Math.max(0, 100 - co2 / 3) : 50;
+  const emissionsScore = co2 > 0 ? Math.max(0, 100 - co2 / 2) : 50;
 
+  // Updated scoring weights - cost efficiency is most important
   const totalScore = (
-    monthlyVsMsrp * SCORING_WEIGHTS.monthly_vs_msrp +
-    monthlyVsOtr * SCORING_WEIGHTS.monthly_vs_otr +
-    fuelScore * SCORING_WEIGHTS.fuel_efficiency +
-    emissionsScore * SCORING_WEIGHTS.emissions
+    costEfficiencyScore * 0.6 +  // 60% weight on cost efficiency
+    mileageScore * 0.2 +         // 20% weight on mileage allowance
+    fuelScore * 0.1 +            // 10% weight on fuel efficiency
+    emissionsScore * 0.1         // 10% weight on emissions
   );
 
   return Math.round(totalScore * 10) / 10;
@@ -334,8 +353,12 @@ exports.handler = async (event, context) => {
       otr_price: v.otr_price,
       mpg: v.mpg,
       co2: v.co2,
+      term: v.term,
+      mileage: v.mileage,
       score: v.score,
-      scoreInfo: v.scoreInfo
+      scoreInfo: v.scoreInfo,
+      total_lease_cost: parseNumeric(v.monthly_payment) * parseNumeric(v.term),
+      cost_vs_value_percent: ((parseNumeric(v.monthly_payment) * parseNumeric(v.term)) / parseNumeric(v.p11d) * 100).toFixed(1)
     }));
 
     const results = {
