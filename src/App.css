@@ -44,6 +44,490 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+/* Flexible Upload Component */
+.flexible-upload-container {
+  margin: 2rem auto;
+  max-width: 600px;
+}
+
+.mapping-container {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 2rem auto;
+  max-width: 1000px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.mapping-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.mapping-header h2 {
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.reset-button {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: #e2e8f0;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.reset-button:hover {
+  background: #cbd5e0;
+}
+
+.provider-input {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.provider-input label {
+  display: block;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.provider-input input {
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 1rem;
+  width: 300px;
+  text-align: center;
+}
+
+.provider-input input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.file-info {
+  background: #f7fafc;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.file-info p {
+  margin: 0.25rem 0;
+  color: #4a5568;
+}
+
+.mapping-grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.mapping-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1rem;
+  align-items: start;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.mapping-row.required {
+  border-color: #f56565;
+  background: #fef5e7;
+}
+
+.field-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.field-label {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.required-indicator {
+  color: #f56565;
+  font-size: 1.2rem;
+}
+
+.field-description {
+  font-size: 0.85rem;
+  color: #718096;
+  margin: 0;
+}
+
+.header-select select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.header-select select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.preview {
+  font-size: 0.8rem;
+  color: #4a5568;
+  background: white;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  max-height: 60px;
+  overflow: hidden;
+}
+
+.mapping-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 2rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.proceed-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.proceed-button:hover {
+  transform: translateY(-1px);
+}
+
+.proceed-button:disabled {
+  background: #cbd5e0;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.validation-info .valid {
+  color: #38a169;
+  font-weight: 500;
+}
+
+.validation-info .invalid {
+  color: #e53e3e;
+  font-weight: 500;
+}
+
+.parsing-container,
+.processing-container {
+  text-align: center;
+  padding: 3rem;
+  background: white;
+  border-radius: 12px;
+  margin: 2rem auto;
+  max-width: 500px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.loading-spinner {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.saved-mappings {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.saved-mappings label {
+  display: block;
+  font-size: 0.9rem;
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+}
+
+.saved-mappings select {
+  padding: 0.5rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: white;
+  min-width: 200px;
+}
+
+.database-status {
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.status-indicator {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.status-indicator.connected {
+  background: #f0fff4;
+  color: #22543d;
+  border: 1px solid #9ae6b4;
+}
+
+.status-indicator.disconnected {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fbd38d;
+}
+
+/* Best Deals Component */
+.best-deals-container {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 2rem auto;
+  max-width: 1400px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.best-deals-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.best-deals-header h2 {
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.best-deals-loading {
+  text-align: center;
+  padding: 3rem;
+  background: white;
+  border-radius: 12px;
+  margin: 2rem auto;
+  max-width: 500px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.filters-section {
+  background: #f7fafc;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.filter-group select,
+.filter-group input {
+  padding: 0.5rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.clear-filters-btn {
+  background: #e2e8f0;
+  color: #4a5568;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.clear-filters-btn:hover {
+  background: #cbd5e0;
+}
+
+.download-csv-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.download-csv-btn:hover {
+  transform: translateY(-1px);
+}
+
+.no-deals {
+  text-align: center;
+  padding: 3rem;
+  color: #4a5568;
+}
+
+.no-deals h3 {
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.results-summary {
+  margin-bottom: 1rem;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.deals-table-container {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.deals-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.deals-table th {
+  background: #f7fafc;
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #2d3748;
+  border-bottom: 2px solid #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.deals-table td {
+  padding: 1rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+.deals-table tr:hover {
+  background: #f7fafc;
+}
+
+.vehicle-info {
+  min-width: 200px;
+}
+
+.vehicle-info strong {
+  color: #2d3748;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.model-name {
+  color: #4a5568;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.cap-code {
+  color: #718096;
+  font-size: 0.8rem;
+  font-family: monospace;
+}
+
+.monthly-cell {
+  min-width: 120px;
+}
+
+.monthly-cell strong {
+  color: #2d3748;
+  display: block;
+  font-size: 1.1rem;
+}
+
+.upfront {
+  color: #718096;
+  font-size: 0.8rem;
+}
+
+.provider-cell {
+  min-width: 120px;
+}
+
+.provider-cell strong {
+  color: #2d3748;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.deal-date {
+  color: #718096;
+  font-size: 0.8rem;
+}
+
+.score-badge {
+  display: inline-block;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 30px;
+  text-align: center;
+}
+
 .App-header h1 {
   font-size: 2.5rem;
   margin-bottom: 0.5rem;
