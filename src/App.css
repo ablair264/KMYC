@@ -28,6 +28,22 @@ body {
   color: white;
 }
 
+/* Format Badge */
+.format-info {
+  margin: 1rem 0;
+}
+
+.format-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 .App-header h1 {
   font-size: 2.5rem;
   margin-bottom: 0.5rem;

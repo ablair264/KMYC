@@ -50,13 +50,20 @@ const ResultsDisplay = ({ results, onReset }) => {
     return '#EF4444';
   };
 
-  const { stats, topDeals, allVehicles, fileName } = results;
+  const { stats, topDeals, allVehicles, fileName, detectedFormat } = results;
 
   return (
     <div className="results-container">
       <div className="results-header">
         <h1>🎉 Analysis Complete!</h1>
         <p>Analyzed <strong>{formatNumber(stats.totalVehicles)}</strong> vehicles from <strong>{fileName}</strong></p>
+        {detectedFormat && (
+          <div className="format-info">
+            <span className="format-badge">
+              📋 Format: {detectedFormat.format.charAt(0).toUpperCase() + detectedFormat.format.slice(1)}
+            </span>
+          </div>
+        )}
         <button onClick={onReset} className="new-analysis-button">
           Analyze New File
         </button>

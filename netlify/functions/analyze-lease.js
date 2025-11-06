@@ -8,25 +8,34 @@ const SCORING_WEIGHTS = {
   emissions: 0.1
 };
 
-// Column mapping for flexible header detection
+// Enhanced column mapping for flexible header detection
 const COLUMN_MAPPINGS = {
   manufacturer: ['MANUFACTURER', 'MAKE', 'BRAND'],
-  model: ['VEHICLE DESCRIPTION', 'MODEL', 'DESCRIPTION', 'VEHICLE'],
-  monthly_payment: ['MONTHLY PAYMENT', 'MONTHLY', 'PAYMENT', 'NET RENTAL CM', 'RENTAL'],
+  model: ['VEHICLE DESCRIPTION', 'MODEL', 'DESCRIPTION', 'VEHICLE', 'DERIVATIVE'],
+  monthly_payment: [
+    'MONTHLY PAYMENT', 'MONTHLY', 'PAYMENT', 'NET RENTAL CM', 'RENTAL',
+    '3 + RENTAL EX VAT', 'RENTAL EX VAT', '3+RENTAL', 'MONTHLY RENTAL',
+    'LEASE PAYMENT', 'MONTHLY COST'
+  ],
   p11d: ['P11D', 'MSRP', 'LIST PRICE', 'RRP', 'PRICE', 'LIST'],
   otr_price: ['OTR PRICE', 'OTR', 'ON THE ROAD', 'TOTAL PRICE'],
   mpg: ['MPG', 'FUEL ECONOMY', 'MILES PER GALLON'],
-  co2: ['CO2', 'EMISSIONS', 'CO2 EMISSIONS', 'CARBON']
+  co2: ['CO2', 'EMISSIONS', 'CO2 EMISSIONS', 'CARBON'],
+  cap_id: ['CAP ID', 'CAP', 'CAPID', 'CAP CODE'],
+  term: ['TERM', 'MONTHS', 'CONTRACT LENGTH'],
+  mileage: ['MILEAGE', 'ANNUAL MILEAGE', 'MILES', 'MILEAGE ALLOWANCE'],
+  upfront: ['UP FRONT', 'UPFRONT', 'INITIAL PAYMENT', 'DEPOSIT']
 };
 
-// Fallback column indices for files without headers (based on sample data structure)
+// Fallback column indices for files without headers (based on actual sample data structure)
 const FALLBACK_COLUMN_INDICES = {
-  manufacturer: 2,  // Column 3 (0-indexed)
-  model: 3,         // Column 4
-  monthly_payment: 6, // Column 7 
-  p11d: 5,          // Column 6
-  mpg: 21,          // Column 22 (38.20, 39.20, etc.)
-  co2: 19           // Column 20 (167, 163, etc.)
+  manufacturer: 2,   // Column 3 (0-indexed) - "Cupra"
+  model: 3,          // Column 4 - "Cupra Formentor 1.5 e-HBD 272PS VZ1 DSG"
+  monthly_payment: 11, // Column 12 - "457.95" (monthly payment)
+  p11d: 5,           // Column 6 - "45,005.00" (P11D price)
+  otr_price: 17,     // Column 18 - "33,918.76" (OTR price)
+  mpg: 25,           // Column 26 - "706.20" (MPG)
+  co2: 10            // Column 11 - "10" (CO2 emissions)
 };
 
 function findColumn(headers, possibleNames) {
@@ -38,19 +47,58 @@ function findColumn(headers, possibleNames) {
   });
   
   for (const name of possibleNames) {
-    if (headerMap[name.toUpperCase()]) {
-      return headerMap[name.toUpperCase()];
+    const normalizedName = name.toUpperCase().trim();
+    if (headerMap[normalizedName]) {
+      return headerMap[normalizedName];
     }
   }
   return -1;
+}
+
+function detectFileFormat(headers, sampleRows) {
+  // Score different format patterns
+  const formatScores = {
+    standard: 0,
+    ratebook: 0,
+    detailed: 0
+  };
+
+  const headerStr = headers.join(' ').toUpperCase();
+  
+  // Ratebook format indicators
+  if (headerStr.includes('CAP ID')) formatScores.ratebook += 3;
+  if (headerStr.includes('RENTAL EX VAT')) formatScores.ratebook += 3;
+  if (headerStr.includes('DERIVATIVE')) formatScores.ratebook += 2;
+  if (headerStr.includes('TERM') && headerStr.includes('MILEAGE')) formatScores.ratebook += 2;
+  
+  // Standard format indicators
+  if (headerStr.includes('P11D')) formatScores.standard += 3;
+  if (headerStr.includes('MONTHLY PAYMENT')) formatScores.standard += 2;
+  if (headerStr.includes('MANUFACTURER')) formatScores.standard += 1;
+  
+  // Detailed format indicators
+  if (headerStr.includes('NET RENTAL CM')) formatScores.detailed += 3;
+  if (headerStr.includes('VEHICLE DESCRIPTION')) formatScores.detailed += 2;
+  
+  // Return the highest scoring format
+  const bestFormat = Object.keys(formatScores).reduce((a, b) => 
+    formatScores[a] > formatScores[b] ? a : b
+  );
+  
+  return { format: bestFormat, scores: formatScores };
 }
 
 function parseNumeric(value) {
   if (typeof value === 'number') return value;
   if (typeof value !== 'string') return 0;
   
-  // Remove currency symbols, commas, and spaces
-  const cleaned = value.replace(/[£$€,\s]/g, '');
+  // Handle empty or null values
+  if (!value || value.trim() === '') return 0;
+  
+  // Remove currency symbols, commas, spaces, and other non-numeric characters except decimal points
+  const cleaned = value.toString().replace(/[£$€,\s%]/g, '');
+  
+  // Parse as float and handle edge cases
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
 }
@@ -141,10 +189,10 @@ exports.handler = async (event, context) => {
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     
-    // Convert to JSON
+    // Convert to JSON - keep raw values to preserve numbers
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
       header: 1,
-      raw: false,
+      raw: true,  // Keep raw values instead of formatted strings
       defval: ''
     });
 
@@ -159,6 +207,7 @@ exports.handler = async (event, context) => {
     // Find header row and map columns
     let headerRowIndex = 0;
     let columnIndices = {};
+    let detectedFormat = null;
     
     // First try to find headers
     for (let i = 0; i < Math.min(5, jsonData.length); i++) {
@@ -175,15 +224,22 @@ exports.handler = async (event, context) => {
       if (Object.keys(tempIndices).length >= 3) {
         headerRowIndex = i;
         columnIndices = tempIndices;
+        
+        // Detect file format based on headers
+        detectedFormat = detectFileFormat(row, jsonData.slice(i + 1, i + 3));
+        console.log('Detected format:', detectedFormat);
         break;
       }
     }
 
     // If no headers found, use fallback column indices and start from row 0
-    if (Object.keys(columnIndices).length < 3) {
+    if (Object.keys(columnIndices).length < 2) {
       console.log('No headers found, using fallback column indices');
       columnIndices = FALLBACK_COLUMN_INDICES;
       headerRowIndex = -1; // Start processing from row 0
+      detectedFormat = { format: 'fallback', scores: {} };
+    } else {
+      console.log('Headers detected:', columnIndices);
     }
 
     // Process data rows
@@ -199,8 +255,26 @@ exports.handler = async (event, context) => {
         p11d: row[columnIndices.p11d] || 0,
         otr_price: row[columnIndices.otr_price] || 0,
         mpg: row[columnIndices.mpg] || 0,
-        co2: row[columnIndices.co2] || 0
+        co2: row[columnIndices.co2] || 0,
+        // Additional fields for ratebook format
+        cap_id: row[columnIndices.cap_id] || '',
+        term: row[columnIndices.term] || '',
+        mileage: row[columnIndices.mileage] || '',
+        upfront: row[columnIndices.upfront] || '',
+        format: detectedFormat?.format || 'unknown'
       };
+
+      // Debug logging for first few rows
+      if (i < 5) {
+        console.log(`Row ${i}:`, {
+          manufacturer: `"${vehicle.manufacturer}"`,
+          monthly_payment: `"${vehicle.monthly_payment}"`,
+          p11d: `"${vehicle.p11d}"`,
+          otr_price: `"${vehicle.otr_price}"`,
+          columnIndices,
+          rawRow: row
+        });
+      }
 
       // Skip rows with missing essential data
       if (!vehicle.manufacturer && !vehicle.model) continue;
@@ -248,6 +322,7 @@ exports.handler = async (event, context) => {
       topDeals,
       allVehicles: vehicles,
       columnMappings: columnIndices,
+      detectedFormat: detectedFormat,
       processedAt: new Date().toISOString()
     };
 
