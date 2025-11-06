@@ -558,6 +558,60 @@ body {
   background: #e2e8f0;
 }
 
+/* Breakdown Panel */
+.breakdown-panel {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+}
+
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.breakdown-grid h4 {
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.component-meter {
+  margin: 0.5rem 0;
+}
+
+.meter-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #4a5568;
+  margin-bottom: 0.25rem;
+}
+
+.meter-bar {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.kv-row { 
+  display: flex; 
+  justify-content: space-between; 
+  font-size: 0.9rem; 
+  margin: 0.25rem 0; 
+}
+
+.kv-row span:first-child { color: #4a5568; }
+.kv-row span:last-child { color: #2d3748; font-weight: 600; }
+
 /* Tables */
 .deals-table-container {
   overflow-x: auto;

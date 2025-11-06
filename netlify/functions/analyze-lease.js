@@ -23,6 +23,7 @@ const COLUMN_MAPPINGS = {
   otr_price: ['OTR PRICE', 'OTR', 'ON THE ROAD', 'TOTAL PRICE'],
   mpg: ['MPG', 'FUEL ECONOMY', 'MILES PER GALLON', 'MPG COMBINED'],
   co2: ['CO2', 'EMISSIONS', 'CO2 EMISSIONS', 'CARBON'],
+  insurance_group: ['INSURANCE GROUP', 'INSURANCE', 'INS GRP'],
   cap_id: ['CAP ID', 'CAP', 'CAPID', 'CAP CODE'],
   term: ['TERM', 'MONTHS', 'CONTRACT LENGTH'],
   mileage: ['MILEAGE', 'ANNUAL MILEAGE', 'ANNUAL_MILEAGE', 'MILES', 'MILEAGE ALLOWANCE'],
@@ -38,6 +39,7 @@ const FALLBACK_COLUMN_INDICES = {
   model: 3,               // VEHICLE DESCRIPTION
   p11d: 5,                // P11D
   co2: 10,                // CO2
+  insurance_group: 20,    // INSURANCE GROUP
   monthly_payment: 12,    // NET RENTAL CM (customer monthly)
   otr_price: 18,          // OTR
   mpg: 26,                // MPG COMBINED
@@ -169,6 +171,7 @@ function computeScoreBreakdown(vehicle) {
   const mpg = parseNumeric(vehicle.mpg);
   const co2 = parseNumeric(vehicle.co2);
   const otr = parseNumeric(vehicle.otr_price);
+  const insuranceGroup = parseNumeric(vehicle.insurance_group);
   let term = parseNumeric(vehicle.term);
   let mileage = parseNumeric(vehicle.mileage);
 
@@ -195,6 +198,9 @@ function computeScoreBreakdown(vehicle) {
   const mileageScore = mileage > 0 ? Math.min(100, (mileage / 15000) * 100) : 50;
   const fuelScore = mpg > 0 ? Math.min(100, mpg * 1.5) : 50;
   const emissionsScore = co2 > 0 ? Math.max(0, 100 - co2 / 2) : 50;
+  const insuranceScore = (insuranceGroup > 0 && insuranceGroup <= 50)
+    ? Math.round((100 - ((insuranceGroup - 1) / 49) * 100) * 10) / 10
+    : null;
 
   const weights = { costEfficiency: 0.6, mileage: 0.2, fuel: 0.1, emissions: 0.1 };
   const score = Math.round((
@@ -215,6 +221,7 @@ function computeScoreBreakdown(vehicle) {
         otr: otr || 0,
         mpg: mpg || 0,
         co2: co2 || 0,
+        insuranceGroup: insuranceGroup || null,
         defaultsApplied: {
           term: usedDefaultTerm,
           mileage: usedDefaultMileage
@@ -228,7 +235,9 @@ function computeScoreBreakdown(vehicle) {
         costEfficiencyScore,
         mileageScore,
         fuelScore,
-        emissionsScore
+        emissionsScore,
+        // Informational only; not included in final combined score
+        insuranceScore
       },
       weights
     }
@@ -392,6 +401,7 @@ exports.handler = async (event, context) => {
         otr_price: row[columnIndices.otr_price] || 0,
         mpg: row[columnIndices.mpg] || 0,
         co2: row[columnIndices.co2] || 0,
+        insurance_group: row[columnIndices.insurance_group] || '',
         // Additional fields for ratebook format
         cap_id: row[columnIndices.cap_id] || '',
         term: row[columnIndices.term] || '',
@@ -501,7 +511,9 @@ exports.handler = async (event, context) => {
       includesVAT: false,
       includesInitialPayment: false,
       formula: 'Score = 0.6*CostEfficiency + 0.2*Mileage + 0.1*Fuel + 0.1*Emissions',
-      weights: { costEfficiency: 0.6, mileage: 0.2, fuel: 0.1, emissions: 0.1 }
+      weights: { costEfficiency: 0.6, mileage: 0.2, fuel: 0.1, emissions: 0.1 },
+      notes: 'Insurance group parsed and shown for info; not weighted',
+      insuranceGroupWeighted: false
     };
 
     const results = {

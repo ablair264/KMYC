@@ -258,8 +258,9 @@ const ResultsDisplay = ({ results, onReset }) => {
                         <button 
                           className="toggle-button"
                           onClick={() => setExpandedRow(expandedRow === index ? null : index)}
+                          title="View score breakdown"
                         >
-                          {expandedRow === index ? 'Hide' : 'View'}
+                          {expandedRow === index ? 'Details ▾' : 'Details ▸'}
                         </button>
                       </td>
                     </tr>
@@ -270,25 +271,45 @@ const ResultsDisplay = ({ results, onReset }) => {
                             <div className="breakdown-grid">
                               <div>
                                 <h4>Inputs</h4>
-                                <div>Monthly: {formatCurrency(vehicle.scoreBreakdown.inputs.monthly)}</div>
-                                <div>Term: {formatNumber(vehicle.scoreBreakdown.inputs.term)} months {vehicle.scoreBreakdown.inputs.defaultsApplied.term ? '(defaulted)' : ''}</div>
-                                <div>Mileage: {formatNumber(vehicle.scoreBreakdown.inputs.mileage)} {vehicle.scoreBreakdown.inputs.defaultsApplied.mileage ? '(defaulted)' : ''}</div>
-                                <div>P11D: {formatCurrency(vehicle.scoreBreakdown.inputs.p11d)}</div>
-                                <div>OTR: {formatCurrency(vehicle.scoreBreakdown.inputs.otr)}</div>
-                                <div>MPG: {formatNumber(vehicle.scoreBreakdown.inputs.mpg)}</div>
-                                <div>CO2: {formatNumber(vehicle.scoreBreakdown.inputs.co2)}</div>
+                                <div className="kv-row"><span>Monthly</span><span>{formatCurrency(vehicle.scoreBreakdown.inputs.monthly)}</span></div>
+                                <div className="kv-row"><span>Term</span><span>{formatNumber(vehicle.scoreBreakdown.inputs.term)} months {vehicle.scoreBreakdown.inputs.defaultsApplied.term ? '(defaulted)' : ''}</span></div>
+                                <div className="kv-row"><span>Mileage</span><span>{formatNumber(vehicle.scoreBreakdown.inputs.mileage)} {vehicle.scoreBreakdown.inputs.defaultsApplied.mileage ? '(defaulted)' : ''}</span></div>
+                                <div className="kv-row"><span>P11D</span><span>{formatCurrency(vehicle.scoreBreakdown.inputs.p11d)}</span></div>
+                                <div className="kv-row"><span>OTR</span><span>{formatCurrency(vehicle.scoreBreakdown.inputs.otr)}</span></div>
+                                <div className="kv-row"><span>MPG</span><span>{formatNumber(vehicle.scoreBreakdown.inputs.mpg)}</span></div>
+                                <div className="kv-row"><span>CO2</span><span>{formatNumber(vehicle.scoreBreakdown.inputs.co2)}</span></div>
+                                {vehicle.scoreBreakdown.inputs.insuranceGroup && (
+                                  <div className="kv-row"><span>Insurance Group</span><span>{formatNumber(vehicle.scoreBreakdown.inputs.insuranceGroup)}</span></div>
+                                )}
                               </div>
                               <div>
                                 <h4>Derived</h4>
-                                <div>Total Lease Cost: {formatCurrency(vehicle.scoreBreakdown.derived.totalLeaseCost)}</div>
-                                <div>Total Cost vs P11D: {vehicle.scoreBreakdown.derived.totalCostVsP11DPercent}%</div>
+                                <div className="kv-row"><span>Total Lease Cost</span><span>{formatCurrency(vehicle.scoreBreakdown.derived.totalLeaseCost)}</span></div>
+                                <div className="kv-row"><span>Cost vs P11D</span><span>{vehicle.scoreBreakdown.derived.totalCostVsP11DPercent}%</span></div>
                               </div>
                               <div>
                                 <h4>Component Scores</h4>
-                                <div>Cost Efficiency: {vehicle.scoreBreakdown.components.costEfficiencyScore}</div>
-                                <div>Mileage: {vehicle.scoreBreakdown.components.mileageScore}</div>
-                                <div>Fuel: {vehicle.scoreBreakdown.components.fuelScore}</div>
-                                <div>Emissions: {vehicle.scoreBreakdown.components.emissionsScore}</div>
+                                {[
+                                  { label: 'Cost Efficiency', value: vehicle.scoreBreakdown.components.costEfficiencyScore },
+                                  { label: 'Mileage', value: vehicle.scoreBreakdown.components.mileageScore },
+                                  { label: 'Fuel', value: vehicle.scoreBreakdown.components.fuelScore },
+                                  { label: 'Emissions', value: vehicle.scoreBreakdown.components.emissionsScore }
+                                ].map(({label, value}) => (
+                                  <div className="component-meter" key={label}>
+                                    <div className="meter-label"><span>{label}</span><span>{value}</span></div>
+                                    <div className="meter-bar">
+                                      <div className="meter-fill" style={{ width: `${value}%`, backgroundColor: getScoreColor(value) }}></div>
+                                    </div>
+                                  </div>
+                                ))}
+                                {vehicle.scoreBreakdown.components.insuranceScore !== null && (
+                                  <div className="component-meter">
+                                    <div className="meter-label"><span>Insurance (info)</span><span>{vehicle.scoreBreakdown.components.insuranceScore}</span></div>
+                                    <div className="meter-bar">
+                                      <div className="meter-fill" style={{ width: `${vehicle.scoreBreakdown.components.insuranceScore}%`, backgroundColor: '#64748b' }}></div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                               <div>
                                 <h4>Weights</h4>
