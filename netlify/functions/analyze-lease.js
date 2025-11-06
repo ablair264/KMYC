@@ -324,13 +324,26 @@ exports.handler = async (event, context) => {
 
     // Get top 100 deals
     const topDeals = vehicles.slice(0, 100);
+    
+    // Create lightweight version for response - remove heavy fields
+    const lightweightVehicles = vehicles.map(v => ({
+      manufacturer: v.manufacturer,
+      model: v.model.substring(0, 100), // Truncate long model names
+      monthly_payment: v.monthly_payment,
+      p11d: v.p11d,
+      otr_price: v.otr_price,
+      mpg: v.mpg,
+      co2: v.co2,
+      score: v.score,
+      scoreInfo: v.scoreInfo
+    }));
 
     const results = {
       success: true,
       fileName,
       stats,
       topDeals,
-      allVehicles: vehicles,
+      allVehicles: lightweightVehicles,
       columnMappings: columnIndices,
       detectedFormat: detectedFormat,
       processedAt: new Date().toISOString()
