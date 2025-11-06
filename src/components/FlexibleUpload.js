@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { 
   saveProviderMapping, 
@@ -141,7 +141,6 @@ const FlexibleUpload = ({ onMappingComplete, onError }) => {
 
   const processWithSupabase = async (mappingData) => {
     const batchId = crypto.randomUUID();
-    const processedVehicles = [];
     const reader = new FileReader();
 
     return new Promise((resolve, reject) => {

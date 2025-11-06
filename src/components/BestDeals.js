@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getBestPricing, searchVehicles } from '../supabase';
+import { getBestPricing } from '../supabase';
 
 const BestDeals = ({ onError }) => {
   const [deals, setDeals] = useState([]);
@@ -10,7 +10,6 @@ const BestDeals = ({ onError }) => {
     maxMonthly: '',
     minScore: ''
   });
-  const [searchTerm, setSearchTerm] = useState('');
   const [totalDeals, setTotalDeals] = useState(0);
   const [manufacturers, setManufacturers] = useState([]);
   const [fuelTypes, setFuelTypes] = useState([]);
@@ -18,7 +17,7 @@ const BestDeals = ({ onError }) => {
   // Load initial data
   useEffect(() => {
     loadBestDeals();
-  }, []);
+  }, [loadBestDeals]);
 
   const loadBestDeals = useCallback(async () => {
     try {
