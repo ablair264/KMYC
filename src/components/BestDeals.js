@@ -70,7 +70,6 @@ const BestDeals = ({ onError }) => {
       maxMonthly: '',
       minScore: ''
     });
-    setSearchTerm('');
   };
 
   const formatCurrency = (value) => {
