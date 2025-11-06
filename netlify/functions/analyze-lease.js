@@ -19,11 +19,11 @@ const COLUMN_MAPPINGS = {
   ],
   p11d: ['P11D', 'MSRP', 'LIST PRICE', 'RRP', 'PRICE', 'LIST'],
   otr_price: ['OTR PRICE', 'OTR', 'ON THE ROAD', 'TOTAL PRICE'],
-  mpg: ['MPG', 'FUEL ECONOMY', 'MILES PER GALLON'],
+  mpg: ['MPG', 'FUEL ECONOMY', 'MILES PER GALLON', 'MPG COMBINED'],
   co2: ['CO2', 'EMISSIONS', 'CO2 EMISSIONS', 'CARBON'],
   cap_id: ['CAP ID', 'CAP', 'CAPID', 'CAP CODE'],
   term: ['TERM', 'MONTHS', 'CONTRACT LENGTH'],
-  mileage: ['MILEAGE', 'ANNUAL MILEAGE', 'MILES', 'MILEAGE ALLOWANCE'],
+  mileage: ['MILEAGE', 'ANNUAL MILEAGE', 'ANNUAL_MILEAGE', 'MILES', 'MILEAGE ALLOWANCE'],
   upfront: ['UP FRONT', 'UPFRONT', 'INITIAL PAYMENT', 'DEPOSIT']
 };
 
@@ -244,25 +244,30 @@ exports.handler = async (event, context) => {
     let columnIndices = {};
     let detectedFormat = null;
     
-    // First try to find headers
-    for (let i = 0; i < Math.min(5, jsonData.length); i++) {
+    // First try to find headers - skip empty/junk rows
+    for (let i = 0; i < Math.min(10, jsonData.length); i++) {
       const row = jsonData[i];
+      if (!row || row.length < 5) continue; // Skip empty or very short rows
+      
       const tempIndices = {};
+      let headerScore = 0;
       
       for (const [key, possibleNames] of Object.entries(COLUMN_MAPPINGS)) {
         const colIndex = findColumn(row, possibleNames);
         if (colIndex !== -1) {
           tempIndices[key] = colIndex;
+          headerScore++;
         }
       }
       
-      if (Object.keys(tempIndices).length >= 3) {
+      // Need at least 5 columns including term and mileage for good detection
+      if (headerScore >= 5 && tempIndices.term !== undefined && tempIndices.mileage !== undefined) {
         headerRowIndex = i;
         columnIndices = tempIndices;
         
         // Detect file format based on headers
         detectedFormat = detectFileFormat(row, jsonData.slice(i + 1, i + 3));
-        console.log('Detected format:', detectedFormat);
+        console.log('Detected format:', detectedFormat, 'Score:', headerScore);
         break;
       }
     }
