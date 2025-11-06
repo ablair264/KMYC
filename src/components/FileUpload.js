@@ -2,8 +2,29 @@ import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
 
-const FileUpload = ({ onAnalysisStart, onAnalysisComplete, onError }) => {
+const FileUpload = ({ 
+  onAnalysisStart, 
+  onAnalysisComplete, 
+  onError,
+  endpoint = '/.netlify/functions/analyze-lease',
+  accept = {
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+    'application/vnd.ms-excel': ['.xls']
+  },
+  maxSize = 10 * 1024 * 1024,
+  title = 'Upload Your Vehicle Lease Spreadsheet',
+  helperText = 'Drag & drop a file here, or click to browse',
+  requirements = [
+    'Excel format (.xlsx or .xls)',
+    'Must include columns for manufacturer, model, and monthly payment',
+    'Maximum file size: 10MB'
+  ],
+  buttonLabel = 'Choose File',
+  icon = '📊',
+  showInsuranceToggle = false
+}) => {
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [useInsuranceWeight, setUseInsuranceWeight] = useState(false);
 
   const analyzeFile = useCallback(async (file) => {
     try {
@@ -24,10 +45,11 @@ const FileUpload = ({ onAnalysisStart, onAnalysisComplete, onError }) => {
       setUploadProgress(30);
 
       // Send to Netlify function
-      const response = await axios.post('/.netlify/functions/analyze-lease', {
-        fileData,
-        fileName: file.name
-      }, {
+      const payload = { fileData, fileName: file.name };
+      if (showInsuranceToggle) {
+        payload.options = { insuranceWeight: useInsuranceWeight ? 0.05 : 0 };
+      }
+      const response = await axios.post(endpoint, payload, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -62,7 +84,7 @@ const FileUpload = ({ onAnalysisStart, onAnalysisComplete, onError }) => {
 
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
     if (rejectedFiles.length > 0) {
-      onError('Please upload an Excel file (.xlsx or .xls)');
+      onError('Please upload a supported file type');
       return;
     }
 
@@ -74,12 +96,9 @@ const FileUpload = ({ onAnalysisStart, onAnalysisComplete, onError }) => {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/vnd.ms-excel': ['.xls']
-    },
+    accept,
     maxFiles: 1,
-    maxSize: 10 * 1024 * 1024 // 10MB limit
+    maxSize
   });
 
   return (
@@ -88,25 +107,33 @@ const FileUpload = ({ onAnalysisStart, onAnalysisComplete, onError }) => {
         <input {...getInputProps()} />
         
         <div className="upload-content">
-          <div className="upload-icon">📊</div>
+          <div className="upload-icon">{icon}</div>
           
           {isDragActive ? (
-            <p>Drop your Excel file here...</p>
+            <p>Drop your file here...</p>
           ) : (
             <>
-              <h2>Upload Your Vehicle Lease Spreadsheet</h2>
-              <p>Drag & drop an Excel file here, or click to browse</p>
+              <h2>{title}</h2>
+              <p>{helperText}</p>
               <div className="file-requirements">
                 <h3>File Requirements:</h3>
                 <ul>
-                  <li>Excel format (.xlsx or .xls)</li>
-                  <li>Must include columns for manufacturer, model, and monthly payment</li>
-                  <li>Maximum file size: 10MB</li>
+                  {requirements.map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
                 </ul>
               </div>
               <button className="upload-button">
-                Choose File
+                {buttonLabel}
               </button>
+              {showInsuranceToggle && (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <label style={{ color: '#2d3748', fontWeight: 500 }}>
+                    <input type="checkbox" checked={useInsuranceWeight} onChange={(e)=>setUseInsuranceWeight(e.target.checked)} style={{ marginRight: '0.5rem' }} />
+                    Include Insurance Group in score (5% weight)
+                  </label>
+                </div>
+              )}
             </>
           )}
         </div>

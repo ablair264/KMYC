@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import FileUpload from './components/FileUpload';
+import LexUpload from './components/LexUpload';
 import ResultsDisplay from './components/ResultsDisplay';
 import './App.css';
 
 function App() {
+  const [providerTab, setProviderTab] = useState('ALD');
   const [analysisResults, setAnalysisResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -36,16 +38,48 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>🚗 Vehicle Lease Analyzer</h1>
-        <p>Upload your Excel file to analyze and score vehicle lease deals</p>
+        <p>Select a provider and upload a file to analyze and score deals</p>
       </header>
 
       <main className="App-main">
         {!analysisResults && !loading && (
-          <FileUpload
-            onAnalysisStart={handleAnalysisStart}
-            onAnalysisComplete={handleAnalysisComplete}
-            onError={handleError}
-          />
+          <>
+            <div className="view-tabs" style={{ marginBottom: '1rem' }}>
+              <button 
+                className={providerTab === 'ALD' ? 'tab active' : 'tab'}
+                onClick={() => { setProviderTab('ALD'); resetApp(); }}
+              >
+                ALD
+              </button>
+              <button 
+                className={providerTab === 'Lex' ? 'tab active' : 'tab'}
+                onClick={() => { setProviderTab('Lex'); resetApp(); }}
+              >
+                Lex
+              </button>
+            </div>
+
+            {providerTab === 'ALD' && (
+              <FileUpload
+                onAnalysisStart={handleAnalysisStart}
+                onAnalysisComplete={(res) => handleAnalysisComplete({ provider: 'ALD', ...res })}
+                onError={handleError}
+                endpoint='/.netlify/functions/analyze-lease'
+                title='Upload ALD Lease Spreadsheet'
+                helperText='Drag & drop an Excel file (.xlsx/.xls), or click to browse'
+                icon='📊'
+                showInsuranceToggle={true}
+              />
+            )}
+
+            {providerTab === 'Lex' && (
+              <LexUpload
+                onAnalysisStart={handleAnalysisStart}
+                onAnalysisComplete={handleAnalysisComplete}
+                onError={handleError}
+              />
+            )}
+          </>
         )}
 
         {loading && (

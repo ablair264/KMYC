@@ -274,7 +274,8 @@ exports.handler = async (event, context) => {
 
   try {
     // Parse the uploaded file from base64
-    const { fileData, fileName } = JSON.parse(event.body);
+    const { fileData, fileName, options } = JSON.parse(event.body);
+    const insuranceWeight = Math.max(0, Math.min(0.2, parseFloat(options?.insuranceWeight || 0)));
     
     if (!fileData) {
       return {
@@ -382,6 +383,13 @@ exports.handler = async (event, context) => {
       console.log('Headers detected:', columnIndices);
     }
 
+    // Helper to compute insurance score from group (1 best -> 100, 50 worst -> 0)
+    const computeInsuranceScoreFromGroup = (grp) => {
+      const g = parseNumeric(grp);
+      if (!g || g < 1 || g > 50) return null;
+      return Math.round((100 - ((g - 1) / 49) * 100) * 10) / 10;
+    };
+
     // Process data rows
     const vehicles = [];
     console.log(`Processing ${jsonData.length} rows, starting from row ${headerRowIndex + 1}`);
@@ -440,8 +448,20 @@ exports.handler = async (event, context) => {
         console.log(`Keeping row ${i}: Found manufacturer="${vehicle.manufacturer}", model="${vehicle.model}", payment="${vehicle.monthly_payment}"`);
       }
 
-      vehicle.score = calculateScore(vehicle);
-      vehicle.scoreInfo = getScoreCategory(vehicle.score);
+      // Compute tie-break helper
+      vehicle.igScore = computeInsuranceScoreFromGroup(vehicle.insurance_group);
+
+      // Base score
+      let baseScore = calculateScore(vehicle);
+      
+      // Optional insurance weighting (reduces other weights proportionally)
+      if (insuranceWeight > 0) {
+        const igComponent = vehicle.igScore ?? 50; // neutral if unknown
+        baseScore = Math.round(((baseScore * (1 - insuranceWeight)) + (igComponent * insuranceWeight)) * 10) / 10;
+      }
+
+      vehicle.score = baseScore;
+      vehicle.scoreInfo = getScoreCategory(baseScore);
       
       vehicles.push(vehicle);
     }
@@ -469,8 +489,15 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Sort by score (highest first)
-    vehicles.sort((a, b) => b.score - a.score);
+    // Sort by score; tie-break using insurance score if within 1 point
+    vehicles.sort((a, b) => {
+      const diff = b.score - a.score;
+      if (Math.abs(diff) >= 1) return diff;
+      const ib = (b.igScore ?? 0) - (a.igScore ?? 0);
+      if (ib !== 0) return ib;
+      // final tie-breaker: lower monthly first
+      return parseNumeric(a.monthly_payment) - parseNumeric(b.monthly_payment);
+    });
 
     // Generate statistics
     const scores = vehicles.map(v => v.score);
@@ -512,8 +539,9 @@ exports.handler = async (event, context) => {
       includesInitialPayment: false,
       formula: 'Score = 0.6*CostEfficiency + 0.2*Mileage + 0.1*Fuel + 0.1*Emissions',
       weights: { costEfficiency: 0.6, mileage: 0.2, fuel: 0.1, emissions: 0.1 },
-      notes: 'Insurance group parsed and shown for info; not weighted',
-      insuranceGroupWeighted: false
+      notes: insuranceWeight > 0 ? `Insurance group weighted at ${(insuranceWeight*100).toFixed(0)}%` : 'Insurance group used only as tie-breaker',
+      insuranceGroupWeighted: insuranceWeight > 0,
+      insuranceWeight
     };
 
     const results = {

@@ -286,15 +286,20 @@ const ResultsDisplay = ({ results, onReset }) => {
                                 <h4>Derived</h4>
                                 <div className="kv-row"><span>Total Lease Cost</span><span>{formatCurrency(vehicle.scoreBreakdown.derived.totalLeaseCost)}</span></div>
                                 <div className="kv-row"><span>Cost vs P11D</span><span>{vehicle.scoreBreakdown.derived.totalCostVsP11DPercent}%</span></div>
+                                {vehicle.scoreBreakdown.derived.costPerMile !== undefined && (
+                                  <div className="kv-row"><span>Operating Cost/mi</span><span>£{(vehicle.scoreBreakdown.derived.costPerMile/100).toFixed(2)}</span></div>
+                                )}
                               </div>
                               <div>
                                 <h4>Component Scores</h4>
                                 {[
                                   { label: 'Cost Efficiency', value: vehicle.scoreBreakdown.components.costEfficiencyScore },
+                                  { label: 'Operating Cost', value: vehicle.scoreBreakdown.components.operatingCostScore },
+                                  { label: 'EV Range', value: vehicle.scoreBreakdown.components.evRangeScore },
                                   { label: 'Mileage', value: vehicle.scoreBreakdown.components.mileageScore },
                                   { label: 'Fuel', value: vehicle.scoreBreakdown.components.fuelScore },
                                   { label: 'Emissions', value: vehicle.scoreBreakdown.components.emissionsScore }
-                                ].map(({label, value}) => (
+                                ].filter(x => x.value !== null && x.value !== undefined).map(({label, value}) => (
                                   <div className="component-meter" key={label}>
                                     <div className="meter-label"><span>{label}</span><span>{value}</span></div>
                                     <div className="meter-bar">
