@@ -14,11 +14,6 @@ const BestDeals = ({ onError }) => {
   const [manufacturers, setManufacturers] = useState([]);
   const [fuelTypes, setFuelTypes] = useState([]);
 
-  // Load initial data
-  useEffect(() => {
-    loadBestDeals();
-  }, [loadBestDeals]);
-
   const loadBestDeals = useCallback(async () => {
     try {
       setLoading(true);
@@ -46,6 +41,11 @@ const BestDeals = ({ onError }) => {
       setLoading(false);
     }
   }, [filters, onError]);
+
+  // Load initial data
+  useEffect(() => {
+    loadBestDeals();
+  }, [loadBestDeals]);
 
   // Reload when filters change
   useEffect(() => {
