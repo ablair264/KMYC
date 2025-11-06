@@ -13,7 +13,7 @@ const COLUMN_MAPPINGS = {
   manufacturer: ['MANUFACTURER', 'MAKE', 'BRAND'],
   model: ['VEHICLE DESCRIPTION', 'MODEL', 'DESCRIPTION', 'VEHICLE', 'DERIVATIVE'],
   monthly_payment: [
-    'MONTHLY PAYMENT', 'MONTHLY', 'PAYMENT', 'NET RENTAL CM', 'RENTAL',
+    'MONTHLY PAYMENT', 'MONTHLY', 'PAYMENT', 'NET RENTAL WM', 'NET RENTAL CM', 'RENTAL',
     '3 + RENTAL EX VAT', 'RENTAL EX VAT', '3+RENTAL', 'MONTHLY RENTAL',
     'LEASE PAYMENT', 'MONTHLY COST'
   ],
@@ -319,9 +319,13 @@ exports.handler = async (event, context) => {
         });
       }
 
-      // Skip rows with missing essential data
-      if (!vehicle.manufacturer && !vehicle.model) continue;
-      if (parseNumeric(vehicle.monthly_payment) === 0) continue;
+      // Skip rows with missing essential data - be more lenient
+      if (!vehicle.manufacturer || !vehicle.model) continue;
+      const monthlyPayment = parseNumeric(vehicle.monthly_payment);
+      if (monthlyPayment === 0) {
+        console.log(`Skipping row ${i}: missing monthly payment. Raw value:`, vehicle.monthly_payment);
+        continue;
+      }
 
       vehicle.score = calculateScore(vehicle);
       vehicle.scoreInfo = getScoreCategory(vehicle.score);
