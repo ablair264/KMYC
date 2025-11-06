@@ -13,7 +13,9 @@ const COLUMN_MAPPINGS = {
   manufacturer: ['MANUFACTURER', 'MAKE', 'BRAND'],
   model: ['VEHICLE DESCRIPTION', 'MODEL', 'DESCRIPTION', 'VEHICLE', 'DERIVATIVE'],
   monthly_payment: [
-    'MONTHLY PAYMENT', 'MONTHLY', 'PAYMENT', 'NET RENTAL WM', 'NET RENTAL CM', 'RENTAL',
+    // Prefer customer monthly rental over others when both exist
+    'NET RENTAL CM', 'NET RENTAL WM',
+    'MONTHLY PAYMENT', 'MONTHLY', 'PAYMENT', 'RENTAL',
     '3 + RENTAL EX VAT', 'RENTAL EX VAT', '3+RENTAL', 'MONTHLY RENTAL',
     'LEASE PAYMENT', 'MONTHLY COST'
   ],
@@ -29,15 +31,17 @@ const COLUMN_MAPPINGS = {
 
 // Fallback column indices for files without headers (based on actual sample data structure)
 const FALLBACK_COLUMN_INDICES = {
-  manufacturer: 2,   // Column 3 (0-indexed) - "Cupra"
-  model: 3,          // Column 4 - "Cupra Formentor 1.5 e-HBD 272PS VZ1 DSG"
-  monthly_payment: 11, // Column 12 - "457.95" (monthly payment)
-  p11d: 5,           // Column 6 - "45,005.00" (P11D price)
-  otr_price: 17,     // Column 18 - "33,918.76" (OTR price)
-  mpg: 25,           // Column 26 - "706.20" (MPG)
-  co2: 10,           // Column 11 - "10" (CO2 emissions)
-  term: 0,           // Column 1 - "36" (months)
-  mileage: 1         // Column 2 - "10000" (annual mileage)
+  // Based on the provided broker ratebook structure (0-indexed)
+  term: 0,                // TERM
+  mileage: 1,             // ANNUAL_MILEAGE
+  manufacturer: 2,        // MANUFACTURER
+  model: 3,               // VEHICLE DESCRIPTION
+  p11d: 5,                // P11D
+  co2: 10,                // CO2
+  monthly_payment: 12,    // NET RENTAL CM (customer monthly)
+  otr_price: 18,          // OTR
+  mpg: 26,                // MPG COMBINED
+  cap_id: 25              // CAP ID
 };
 
 function findColumn(headers, possibleNames) {
@@ -50,7 +54,8 @@ function findColumn(headers, possibleNames) {
   
   for (const name of possibleNames) {
     const normalizedName = name.toUpperCase().trim();
-    if (headerMap[normalizedName]) {
+    // Use hasOwnProperty so index 0 is not treated as falsy
+    if (Object.prototype.hasOwnProperty.call(headerMap, normalizedName)) {
       return headerMap[normalizedName];
     }
   }
@@ -273,7 +278,7 @@ exports.handler = async (event, context) => {
     }
 
     // If no headers found OR essential fields missing, use fallback column indices
-    if (Object.keys(columnIndices).length < 2 || !columnIndices.term || !columnIndices.mileage) {
+    if (Object.keys(columnIndices).length < 2 || columnIndices.term === undefined || columnIndices.mileage === undefined) {
       console.log('No headers found or missing essential fields, using fallback column indices');
       console.log('Found columns:', columnIndices);
       columnIndices = FALLBACK_COLUMN_INDICES;
