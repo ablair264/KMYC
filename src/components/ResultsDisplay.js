@@ -271,34 +271,38 @@ const ResultsDisplay = ({ results, onReset }) => {
                             <div className="breakdown-grid">
                               <div>
                                 <h4>Inputs</h4>
-                                <div className="kv-row"><span>Monthly</span><span>{formatCurrency(vehicle.scoreBreakdown.inputs.monthly)}</span></div>
-                                <div className="kv-row"><span>Term</span><span>{formatNumber(vehicle.scoreBreakdown.inputs.term)} months {vehicle.scoreBreakdown.inputs.defaultsApplied.term ? '(defaulted)' : ''}</span></div>
-                                <div className="kv-row"><span>Mileage</span><span>{formatNumber(vehicle.scoreBreakdown.inputs.mileage)} {vehicle.scoreBreakdown.inputs.defaultsApplied.mileage ? '(defaulted)' : ''}</span></div>
-                                <div className="kv-row"><span>P11D</span><span>{formatCurrency(vehicle.scoreBreakdown.inputs.p11d)}</span></div>
-                                <div className="kv-row"><span>OTR</span><span>{formatCurrency(vehicle.scoreBreakdown.inputs.otr)}</span></div>
-                                <div className="kv-row"><span>MPG</span><span>{formatNumber(vehicle.scoreBreakdown.inputs.mpg)}</span></div>
-                                <div className="kv-row"><span>CO2</span><span>{formatNumber(vehicle.scoreBreakdown.inputs.co2)}</span></div>
-                                {vehicle.scoreBreakdown.inputs.insuranceGroup && (
-                                  <div className="kv-row"><span>Insurance Group</span><span>{formatNumber(vehicle.scoreBreakdown.inputs.insuranceGroup)}</span></div>
+                                <div className="kv-row"><span>Monthly</span><span>{formatCurrency(vehicle.scoreBreakdown.inputs?.monthly || vehicle.monthly_payment)}</span></div>
+                                <div className="kv-row"><span>Term</span><span>{formatNumber(vehicle.scoreBreakdown.inputs?.term || vehicle.term)} months {vehicle.scoreBreakdown.inputs?.defaultsApplied?.term ? '(defaulted)' : ''}</span></div>
+                                <div className="kv-row"><span>Mileage</span><span>{formatNumber(vehicle.scoreBreakdown.inputs?.mileage || vehicle.mileage)} {vehicle.scoreBreakdown.inputs?.defaultsApplied?.mileage ? '(defaulted)' : ''}</span></div>
+                                <div className="kv-row"><span>P11D</span><span>{formatCurrency(vehicle.scoreBreakdown.inputs?.p11d || vehicle.p11d)}</span></div>
+                                <div className="kv-row"><span>OTR</span><span>{formatCurrency(vehicle.scoreBreakdown.inputs?.otr || vehicle.otr_price)}</span></div>
+                                <div className="kv-row"><span>MPG</span><span>{formatNumber(vehicle.scoreBreakdown.inputs?.mpg || vehicle.mpg)}</span></div>
+                                <div className="kv-row"><span>CO2</span><span>{formatNumber(vehicle.scoreBreakdown.inputs?.co2 || vehicle.co2)}</span></div>
+                                {(vehicle.scoreBreakdown.inputs?.insuranceGroup || vehicle.insurance_group) && (
+                                  <div className="kv-row"><span>Insurance Group</span><span>{formatNumber(vehicle.scoreBreakdown.inputs?.insuranceGroup || vehicle.insurance_group)}</span></div>
                                 )}
                               </div>
                               <div>
                                 <h4>Derived</h4>
-                                <div className="kv-row"><span>Total Lease Cost</span><span>{formatCurrency(vehicle.scoreBreakdown.derived.totalLeaseCost)}</span></div>
-                                <div className="kv-row"><span>Cost vs P11D</span><span>{vehicle.scoreBreakdown.derived.totalCostVsP11DPercent}%</span></div>
-                                {vehicle.scoreBreakdown.derived.costPerMile !== undefined && (
+                                {vehicle.scoreBreakdown.derived?.totalLeaseCost && (
+                                  <div className="kv-row"><span>Total Lease Cost</span><span>{formatCurrency(vehicle.scoreBreakdown.derived.totalLeaseCost)}</span></div>
+                                )}
+                                {vehicle.scoreBreakdown.derived?.totalCostVsP11DPercent && (
+                                  <div className="kv-row"><span>Cost vs P11D</span><span>{vehicle.scoreBreakdown.derived.totalCostVsP11DPercent}%</span></div>
+                                )}
+                                {vehicle.scoreBreakdown.derived?.costPerMile !== undefined && (
                                   <div className="kv-row"><span>Operating Cost/mi</span><span>£{(vehicle.scoreBreakdown.derived.costPerMile/100).toFixed(2)}</span></div>
                                 )}
                               </div>
                               <div>
                                 <h4>Component Scores</h4>
                                 {[
-                                  { label: 'Cost Efficiency', value: vehicle.scoreBreakdown.components.costEfficiencyScore },
-                                  { label: 'Operating Cost', value: vehicle.scoreBreakdown.components.operatingCostScore },
-                                  { label: 'EV Range', value: vehicle.scoreBreakdown.components.evRangeScore },
-                                  { label: 'Mileage', value: vehicle.scoreBreakdown.components.mileageScore },
-                                  { label: 'Fuel', value: vehicle.scoreBreakdown.components.fuelScore },
-                                  { label: 'Emissions', value: vehicle.scoreBreakdown.components.emissionsScore }
+                                  { label: 'Cost Efficiency', value: vehicle.scoreBreakdown.components?.costEfficiencyScore },
+                                  { label: 'Operating Cost', value: vehicle.scoreBreakdown.components?.operatingCostScore },
+                                  { label: 'EV Range', value: vehicle.scoreBreakdown.components?.evRangeScore },
+                                  { label: 'Mileage', value: vehicle.scoreBreakdown.components?.mileageScore },
+                                  { label: 'Fuel', value: vehicle.scoreBreakdown.components?.fuelScore },
+                                  { label: 'Emissions', value: vehicle.scoreBreakdown.components?.emissionsScore }
                                 ].filter(x => x.value !== null && x.value !== undefined).map(({label, value}) => (
                                   <div className="component-meter" key={label}>
                                     <div className="meter-label"><span>{label}</span><span>{value}</span></div>
@@ -307,7 +311,7 @@ const ResultsDisplay = ({ results, onReset }) => {
                                     </div>
                                   </div>
                                 ))}
-                                {vehicle.scoreBreakdown.components.insuranceScore !== null && (
+                                {vehicle.scoreBreakdown.components?.insuranceScore !== null && vehicle.scoreBreakdown.components?.insuranceScore !== undefined && (
                                   <div className="component-meter">
                                     <div className="meter-label"><span>Insurance (info)</span><span>{vehicle.scoreBreakdown.components.insuranceScore}</span></div>
                                     <div className="meter-bar">
@@ -318,10 +322,20 @@ const ResultsDisplay = ({ results, onReset }) => {
                               </div>
                               <div>
                                 <h4>Weights</h4>
-                                <div>Cost: {Math.round(vehicle.scoreBreakdown.weights.costEfficiency*100)}%</div>
-                                <div>Mileage: {Math.round(vehicle.scoreBreakdown.weights.mileage*100)}%</div>
-                                <div>Fuel: {Math.round(vehicle.scoreBreakdown.weights.fuel*100)}%</div>
-                                <div>Emissions: {Math.round(vehicle.scoreBreakdown.weights.emissions*100)}%</div>
+                                {vehicle.scoreBreakdown.weights && (
+                                  <>
+                                    <div>Cost: {Math.round((vehicle.scoreBreakdown.weights.costEfficiency || 0)*100)}%</div>
+                                    <div>Mileage: {Math.round((vehicle.scoreBreakdown.weights.mileage || 0)*100)}%</div>
+                                    <div>Fuel: {Math.round((vehicle.scoreBreakdown.weights.fuel || 0)*100)}%</div>
+                                    <div>Emissions: {Math.round((vehicle.scoreBreakdown.weights.emissions || 0)*100)}%</div>
+                                    {vehicle.scoreBreakdown.weights.operating && (
+                                      <div>Operating: {Math.round(vehicle.scoreBreakdown.weights.operating*100)}%</div>
+                                    )}
+                                    {vehicle.scoreBreakdown.weights.evRange && (
+                                      <div>EV Range: {Math.round(vehicle.scoreBreakdown.weights.evRange*100)}%</div>
+                                    )}
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
