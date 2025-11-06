@@ -285,9 +285,14 @@ exports.handler = async (event, context) => {
 
     // Process data rows
     const vehicles = [];
+    console.log(`Processing ${jsonData.length} rows, starting from row ${headerRowIndex + 1}`);
+    
     for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
       const row = jsonData[i];
-      if (!row || row.length === 0) continue;
+      if (!row || row.length === 0) {
+        console.log(`Skipping empty row ${i}`);
+        continue;
+      }
 
       const vehicle = {
         manufacturer: row[columnIndices.manufacturer] || '',
@@ -320,10 +325,13 @@ exports.handler = async (event, context) => {
       }
 
       // Skip rows with missing essential data - be more lenient
-      if (!vehicle.manufacturer || !vehicle.model) continue;
+      if (!vehicle.manufacturer || !vehicle.model) {
+        console.log(`Skipping row ${i}: missing manufacturer/model. Manufacturer: "${vehicle.manufacturer}", Model: "${vehicle.model}"`);
+        continue;
+      }
       const monthlyPayment = parseNumeric(vehicle.monthly_payment);
       if (monthlyPayment === 0) {
-        console.log(`Skipping row ${i}: missing monthly payment. Raw value:`, vehicle.monthly_payment);
+        console.log(`Skipping row ${i}: missing monthly payment. Raw value: "${vehicle.monthly_payment}", Column index: ${columnIndices.monthly_payment}`);
         continue;
       }
 
@@ -334,10 +342,25 @@ exports.handler = async (event, context) => {
     }
 
     if (vehicles.length === 0) {
+      console.log('No vehicles found. Debug info:', {
+        totalRows: jsonData.length,
+        headerRowIndex,
+        columnIndices,
+        sampleFirstRows: jsonData.slice(0, 5).map((row, i) => ({ row: i, data: row?.slice(0, 10) }))
+      });
+      
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'No valid vehicle data found in the file' })
+        body: JSON.stringify({ 
+          error: 'No valid vehicle data found in the file',
+          debug: {
+            totalRows: jsonData.length,
+            headerRowIndex,
+            detectedColumns: Object.keys(columnIndices).length,
+            columnIndices
+          }
+        })
       };
     }
 
