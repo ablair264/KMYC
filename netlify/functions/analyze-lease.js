@@ -323,28 +323,33 @@ exports.handler = async (event, context) => {
       };
 
       // Debug logging for first few rows
-      if (i <= headerRowIndex + 3) {
-        console.log(`Row ${i} data:`, {
-          manufacturer: vehicle.manufacturer,
-          monthly_payment: vehicle.monthly_payment,
-          p11d: vehicle.p11d,
-          term: vehicle.term,
-          mileage: vehicle.mileage,
-          rawTerm: row[columnIndices.term],
-          rawMileage: row[columnIndices.mileage],
-          columnIndices: columnIndices
+      if (i <= headerRowIndex + 5) {
+        console.log(`Row ${i} processing:`, {
+          rowLength: row.length,
+          manufacturer: `"${vehicle.manufacturer}"`,
+          model: `"${vehicle.model}"`,
+          monthly_payment: `"${vehicle.monthly_payment}"`,
+          p11d: `"${vehicle.p11d}"`,
+          term: `"${vehicle.term}"`,
+          mileage: `"${vehicle.mileage}"`,
+          rawData: row.slice(0, 15),
+          columnMappings: {
+            manufacturer: `row[${columnIndices.manufacturer}] = "${row[columnIndices.manufacturer]}"`,
+            monthly_payment: `row[${columnIndices.monthly_payment}] = "${row[columnIndices.monthly_payment]}"`,
+            p11d: `row[${columnIndices.p11d}] = "${row[columnIndices.p11d]}"`
+          }
         });
       }
 
-      // Skip rows with missing essential data - be more lenient
-      if (!vehicle.manufacturer || !vehicle.model) {
-        console.log(`Skipping row ${i}: missing manufacturer/model. Manufacturer: "${vehicle.manufacturer}", Model: "${vehicle.model}"`);
+      // Very lenient validation for debugging - just check if we have any data
+      if (!vehicle.manufacturer && !vehicle.model && !vehicle.monthly_payment) {
+        console.log(`Skipping row ${i}: completely empty`);
         continue;
       }
-      const monthlyPayment = parseNumeric(vehicle.monthly_payment);
-      if (monthlyPayment === 0) {
-        console.log(`Skipping row ${i}: missing monthly payment. Raw value: "${vehicle.monthly_payment}", Column index: ${columnIndices.monthly_payment}`);
-        continue;
+      
+      // Log what we're keeping
+      if (i <= headerRowIndex + 5) {
+        console.log(`Keeping row ${i}: Found manufacturer="${vehicle.manufacturer}", model="${vehicle.model}", payment="${vehicle.monthly_payment}"`);
       }
 
       vehicle.score = calculateScore(vehicle);
