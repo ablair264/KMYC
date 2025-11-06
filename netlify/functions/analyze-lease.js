@@ -277,7 +277,17 @@ exports.handler = async (event, context) => {
       console.log('No headers found or missing essential fields, using fallback column indices');
       console.log('Found columns:', columnIndices);
       columnIndices = FALLBACK_COLUMN_INDICES;
-      headerRowIndex = -1; // Start processing from row 0
+      
+      // Find first data row by looking for numeric values in expected positions
+      headerRowIndex = 2; // Skip first 3 rows (junk, headers, empty) and start from row 3
+      for (let i = 3; i < Math.min(10, jsonData.length); i++) {
+        const row = jsonData[i];
+        if (row && row.length > 10 && row[0] && !isNaN(parseFloat(row[0]))) {
+          headerRowIndex = i - 1; // Set to row before first data row
+          break;
+        }
+      }
+      
       detectedFormat = { format: 'fallback', scores: {} };
     } else {
       console.log('Headers detected:', columnIndices);
