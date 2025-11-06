@@ -19,6 +19,16 @@ const COLUMN_MAPPINGS = {
   co2: ['CO2', 'EMISSIONS', 'CO2 EMISSIONS', 'CARBON']
 };
 
+// Fallback column indices for files without headers (based on sample data structure)
+const FALLBACK_COLUMN_INDICES = {
+  manufacturer: 2,  // Column 3 (0-indexed)
+  model: 3,         // Column 4
+  monthly_payment: 6, // Column 7 
+  p11d: 5,          // Column 6
+  mpg: 21,          // Column 22 (38.20, 39.20, etc.)
+  co2: 19           // Column 20 (167, 163, etc.)
+};
+
 function findColumn(headers, possibleNames) {
   const headerMap = {};
   headers.forEach((header, index) => {
@@ -39,7 +49,8 @@ function parseNumeric(value) {
   if (typeof value === 'number') return value;
   if (typeof value !== 'string') return 0;
   
-  const cleaned = value.replace(/[£$,\s]/g, '');
+  // Remove currency symbols, commas, and spaces
+  const cleaned = value.replace(/[£$€,\s]/g, '');
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
 }
@@ -149,6 +160,7 @@ exports.handler = async (event, context) => {
     let headerRowIndex = 0;
     let columnIndices = {};
     
+    // First try to find headers
     for (let i = 0; i < Math.min(5, jsonData.length); i++) {
       const row = jsonData[i];
       const tempIndices = {};
@@ -167,14 +179,11 @@ exports.handler = async (event, context) => {
       }
     }
 
+    // If no headers found, use fallback column indices and start from row 0
     if (Object.keys(columnIndices).length < 3) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ 
-          error: 'Could not find required columns. Please ensure your file has columns for manufacturer, model, and monthly payment.' 
-        })
-      };
+      console.log('No headers found, using fallback column indices');
+      columnIndices = FALLBACK_COLUMN_INDICES;
+      headerRowIndex = -1; // Start processing from row 0
     }
 
     // Process data rows

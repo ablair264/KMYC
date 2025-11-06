@@ -31,6 +31,9 @@ const FileUpload = ({ onAnalysisStart, onAnalysisComplete, onError }) => {
         headers: {
           'Content-Type': 'application/json',
         },
+        timeout: 120000, // 2 minute timeout
+        maxContentLength: 50 * 1024 * 1024, // 50MB max content
+        maxBodyLength: 50 * 1024 * 1024, // 50MB max body
         onUploadProgress: (progressEvent) => {
           const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setUploadProgress(30 + (progress * 0.7)); // 30% + 70% of upload progress

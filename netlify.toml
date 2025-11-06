@@ -16,6 +16,8 @@
 # Function settings
 [functions."analyze-lease"]
   # Increase timeout for large file processing
-  timeout = 60
+  timeout = 120
   # Increase memory for Excel processing
-  memory = 1024
+  memory = 3008
+  # Set explicit node version
+  node_bundler = "esbuild"
