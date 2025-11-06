@@ -279,11 +279,13 @@ exports.handler = async (event, context) => {
       columnIndices = FALLBACK_COLUMN_INDICES;
       
       // Find first data row by looking for numeric values in expected positions
-      headerRowIndex = 2; // Skip first 3 rows (junk, headers, empty) and start from row 3
+      headerRowIndex = 2; // Default to start processing from row 3
       for (let i = 3; i < Math.min(10, jsonData.length); i++) {
         const row = jsonData[i];
-        if (row && row.length > 10 && row[0] && !isNaN(parseFloat(row[0]))) {
+        console.log(`Checking row ${i} for data:`, row?.slice(0, 5));
+        if (row && row.length > 10 && row[0] && !isNaN(parseFloat(row[0])) && row[2]) {
           headerRowIndex = i - 1; // Set to row before first data row
+          console.log(`Found first data row at ${i}, setting headerRowIndex to ${headerRowIndex}`);
           break;
         }
       }
