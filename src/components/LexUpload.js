@@ -86,7 +86,7 @@ const COLUMN_MAPPINGS = {
   fuel_type: ['FUEL_TYPE', 'FUEL TYPE', 'FUELTYPE', 'FUEL'],
   miles_per_kwh: ['MILES/KWH', 'MI/KWH', 'MILES PER KWH', 'MILES PER KWH (MI/KWH)'],
   kwh_per_100km: ['KWH/100KM', 'KWH/100 KM', 'CONSUMPTION KWH/100KM', 'KWH_PER_100KM', 'KWH / 100KM'],
-  electric_range: ['EAER', 'ELECTRIC RANGE', 'EV RANGE', 'ZERO EMISSION RANGE (EAER)', 'EAER (MI)', 'EAER MILES'],
+  electric_range: ['WLTP_PURE_EV_RANGE__MILES_', 'WLTP PURE EV RANGE MILES', 'WLTP_EAER__MILES', 'WLTP EAER MILES', 'EAER', 'ELECTRIC RANGE', 'EV RANGE', 'ZERO EMISSION RANGE (EAER)', 'EAER (MI)', 'EAER MILES'],
   // Prefer customer/driver monthly; avoid overly-generic 'CM' token to prevent false matches (e.g., 100KM)
   monthly_cm: [
     'RENTAL', 'LEASE_RENTAL', 'LEASE RENTAL',
@@ -175,11 +175,32 @@ function scoreVehicle(v, assumptions, opts = {}) {
   else costEfficiencyScore = 0;
 
   const mileageScore = Math.min(100, (mileage / 15000) * 100);
-  const fuelScore = mpg > 0 ? Math.min(100, mpg * 1.5) : 50;
+  
+  // Handle hybrid MPG figures which are unrealistic due to WLTP test methodology
+  let adjustedMpg = mpg;
+  const fuelType = (v.fuel_type || '').toString().toLowerCase();
+  const isHybrid = fuelType.includes('hybrid') || fuelType.includes('plugin') || fuelType.includes('phev');
+  
+  if (isHybrid && mpg > 100) {
+    // For hybrids with unrealistic MPG (>100), use a more realistic estimate
+    // Based on electric range and typical hybrid efficiency
+    const evRange = parseNumber(v.electric_range) || 0;
+    if (evRange > 0 && evRange < 60) {
+      // Short-range PHEV: estimate real-world MPG as 50-70 depending on range
+      adjustedMpg = Math.min(70, 45 + (evRange / 60) * 25);
+    } else if (evRange >= 60) {
+      // Long-range PHEV: can achieve better efficiency
+      adjustedMpg = Math.min(80, 60 + (Math.min(evRange, 100) / 100) * 20);
+    } else {
+      // Regular hybrid without PHEV range data - assume ~60 MPG real-world
+      adjustedMpg = Math.min(65, mpg * 0.3); // Dramatically reduce unrealistic figures
+    }
+  }
+  
+  const fuelScore = adjustedMpg > 0 ? Math.min(100, adjustedMpg * 1.5) : 50;
   const emissionsScore = co2 > 0 ? Math.max(0, 100 - co2 / 2) : 50;
 
   // Operating cost per mile
-  const fuelType = (v.fuel_type || '').toString().toLowerCase();
   let milesPerKwh = parseNumber(v.miles_per_kwh);
   if (!milesPerKwh) {
     const kwh100 = parseNumber(v.kwh_per_100km);
@@ -190,7 +211,9 @@ function scoreVehicle(v, assumptions, opts = {}) {
     const price = assumptions.electricityPricePerKwh;
     costPerMile = milesPerKwh > 0 ? price / milesPerKwh : 0.12; // fallback 12p/mi
   } else {
-    const litrePerMile = mpg > 0 ? 4.54609 / mpg : 0.12; // fallback ~12L/100km
+    // Use adjusted MPG for hybrids to get realistic operating costs
+    const effectiveMpg = isHybrid ? adjustedMpg : mpg;
+    const litrePerMile = effectiveMpg > 0 ? 4.54609 / effectiveMpg : 0.12; // fallback ~12L/100km
     const fuelPrice = fuelType.includes('diesel') ? assumptions.dieselPricePerLitre : assumptions.petrolPricePerLitre;
     costPerMile = litrePerMile * fuelPrice;
   }
@@ -243,6 +266,7 @@ function scoreVehicle(v, assumptions, opts = {}) {
         p11d,
         otr: parseNumber(v.otr_price),
         mpg,
+        adjustedMpg: isHybrid && mpg > 100 ? adjustedMpg : null, // Show adjusted MPG for problematic hybrids
         co2,
         fuelType: v.fuel_type || '',
         milesPerKwh,

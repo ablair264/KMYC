@@ -152,8 +152,26 @@ function calculateScore(vehicle) {
   // Mileage allowance score (higher allowance = better value)
   const mileageScore = mileage > 0 ? Math.min(100, (mileage / 15000) * 100) : 50;
   
-  // Fuel efficiency score (higher MPG is better)
-  const fuelScore = mpg > 0 ? Math.min(100, mpg * 1.5) : 50;
+  // Handle hybrid MPG figures which are unrealistic due to WLTP test methodology
+  let adjustedMpg = mpg;
+  const fuelType = (vehicle.fuel_type || '').toString().toLowerCase();
+  const isHybrid = fuelType.includes('hybrid') || fuelType.includes('plugin') || fuelType.includes('phev');
+  
+  if (isHybrid && mpg > 100) {
+    // For hybrids with unrealistic MPG (>100), use a more realistic estimate
+    // Since analyze-lease.js doesn't have electric range data readily available,
+    // use a simpler correction based on CO2 emissions
+    if (co2 > 0 && co2 < 50) {
+      // Very low CO2 suggests good PHEV - estimate 60-75 MPG real-world
+      adjustedMpg = Math.min(75, 55 + (50 - co2));
+    } else {
+      // Regular hybrid or less efficient PHEV - assume ~50-65 MPG real-world
+      adjustedMpg = Math.min(65, mpg * 0.25); // Dramatically reduce unrealistic figures
+    }
+  }
+  
+  // Fuel efficiency score (higher adjusted MPG is better)
+  const fuelScore = adjustedMpg > 0 ? Math.min(100, adjustedMpg * 1.5) : 50;
   
   // Emissions score (lower CO2 is better)
   const emissionsScore = co2 > 0 ? Math.max(0, 100 - co2 / 2) : 50;
@@ -201,7 +219,20 @@ function computeScoreBreakdown(vehicle) {
   else costEfficiencyScore = 0;
 
   const mileageScore = mileage > 0 ? Math.min(100, (mileage / 15000) * 100) : 50;
-  const fuelScore = mpg > 0 ? Math.min(100, mpg * 1.5) : 50;
+  // Handle hybrid MPG figures - same logic as calculateScore
+  let adjustedMpg = mpg;
+  const fuelType = (vehicle.fuel_type || '').toString().toLowerCase();
+  const isHybrid = fuelType.includes('hybrid') || fuelType.includes('plugin') || fuelType.includes('phev');
+  
+  if (isHybrid && mpg > 100) {
+    if (co2 > 0 && co2 < 50) {
+      adjustedMpg = Math.min(75, 55 + (50 - co2));
+    } else {
+      adjustedMpg = Math.min(65, mpg * 0.25);
+    }
+  }
+  
+  const fuelScore = adjustedMpg > 0 ? Math.min(100, adjustedMpg * 1.5) : 50;
   const emissionsScore = co2 > 0 ? Math.max(0, 100 - co2 / 2) : 50;
   const insuranceScore = (insuranceGroup > 0 && insuranceGroup <= 50)
     ? Math.round((100 - ((insuranceGroup - 1) / 49) * 100) * 10) / 10
@@ -225,6 +256,7 @@ function computeScoreBreakdown(vehicle) {
         p11d: p11d || 0,
         otr: otr || 0,
         mpg: mpg || 0,
+        adjustedMpg: isHybrid && mpg > 100 ? adjustedMpg : null, // Show adjusted MPG for problematic hybrids
         co2: co2 || 0,
         insuranceGroup: insuranceGroup || null,
         defaultsApplied: {

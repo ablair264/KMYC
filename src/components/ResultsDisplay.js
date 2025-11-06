@@ -276,7 +276,7 @@ const ResultsDisplay = ({ results, onReset }) => {
                                 <div className="kv-row"><span>Mileage</span><span>{formatNumber(vehicle.scoreBreakdown.inputs?.mileage || vehicle.mileage)} {vehicle.scoreBreakdown.inputs?.defaultsApplied?.mileage ? '(defaulted)' : ''}</span></div>
                                 <div className="kv-row"><span>P11D</span><span>{formatCurrency(vehicle.scoreBreakdown.inputs?.p11d || vehicle.p11d)}</span></div>
                                 <div className="kv-row"><span>OTR</span><span>{formatCurrency(vehicle.scoreBreakdown.inputs?.otr || vehicle.otr_price)}</span></div>
-                                <div className="kv-row"><span>MPG</span><span>{formatNumber(vehicle.scoreBreakdown.inputs?.mpg || vehicle.mpg)}</span></div>
+                                <div className="kv-row"><span>MPG</span><span>{formatNumber(vehicle.scoreBreakdown.inputs?.mpg || vehicle.mpg)}{vehicle.scoreBreakdown.inputs?.adjustedMpg ? ` (adjusted: ${formatNumber(vehicle.scoreBreakdown.inputs.adjustedMpg)})` : ''}</span></div>
                                 <div className="kv-row"><span>CO2</span><span>{formatNumber(vehicle.scoreBreakdown.inputs?.co2 || vehicle.co2)}</span></div>
                                 {(vehicle.scoreBreakdown.inputs?.insuranceGroup || vehicle.insurance_group) && (
                                   <div className="kv-row"><span>Insurance Group</span><span>{formatNumber(vehicle.scoreBreakdown.inputs?.insuranceGroup || vehicle.insurance_group)}</span></div>
