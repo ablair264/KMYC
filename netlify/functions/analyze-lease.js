@@ -184,17 +184,29 @@ exports.handler = async (event, context) => {
     
     const buffer = Buffer.from(base64Data, 'base64');
     
-    // Read Excel file
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    
-    // Convert to JSON - keep raw values to preserve numbers
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-      header: 1,
-      raw: true,  // Keep raw values instead of formatted strings
-      defval: ''
-    });
+    // Read Excel file with error handling
+    let workbook, jsonData;
+    try {
+      workbook = XLSX.read(buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      
+      // Convert to JSON - keep raw values to preserve numbers
+      jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1,
+        raw: true,  // Keep raw values instead of formatted strings
+        defval: ''
+      });
+    } catch (xlsxError) {
+      console.error('Excel parsing error:', xlsxError);
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Failed to parse Excel file. Please ensure it\'s a valid .xlsx or .xls file.' 
+        })
+      };
+    }
 
     if (jsonData.length < 2) {
       return {
@@ -264,15 +276,13 @@ exports.handler = async (event, context) => {
         format: detectedFormat?.format || 'unknown'
       };
 
-      // Debug logging for first few rows
-      if (i < 5) {
-        console.log(`Row ${i}:`, {
-          manufacturer: `"${vehicle.manufacturer}"`,
-          monthly_payment: `"${vehicle.monthly_payment}"`,
-          p11d: `"${vehicle.p11d}"`,
-          otr_price: `"${vehicle.otr_price}"`,
-          columnIndices,
-          rawRow: row
+      // Debug logging for first row only
+      if (i === headerRowIndex + 1) {
+        console.log('First vehicle:', {
+          manufacturer: vehicle.manufacturer,
+          monthly_payment: vehicle.monthly_payment,
+          p11d: vehicle.p11d,
+          otr_price: vehicle.otr_price
         });
       }
 
