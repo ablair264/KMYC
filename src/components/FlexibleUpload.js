@@ -181,33 +181,29 @@ const FlexibleUpload = ({ onMappingComplete, onError }) => {
             }
 
             try {
-              // Find or create vehicle
+              // Always upsert vehicle to ensure we have the most complete data
               let vehicle = null;
               if (useDatabaseStorage) {
-                vehicle = await findMatchingVehicle(vehicleData);
+                // Create/update vehicle with all available fields matching database schema
+                const vehicleRecord = {
+                  cap_code: vehicleData.cap_code || null,
+                  manufacturer: vehicleData.manufacturer?.toUpperCase(),
+                  model: vehicleData.model,
+                  variant: vehicleData.variant || vehicleData.model, // Use variant if available, otherwise model
+                  p11d: vehicleData.p11d ? parseFloat(vehicleData.p11d) : null,
+                  otr_price: vehicleData.otr_price ? parseFloat(vehicleData.otr_price) : null,
+                  fuel_type: vehicleData.fuel_type || null,
+                  co2_emissions: vehicleData.co2 ? parseInt(vehicleData.co2) : null,
+                  mpg: vehicleData.mpg ? parseFloat(vehicleData.mpg) : null,
+                  electric_range: vehicleData.electric_range ? parseInt(vehicleData.electric_range) : null,
+                  insurance_group: vehicleData.insurance_group ? parseInt(vehicleData.insurance_group) : null,
+                  body_style: vehicleData.body_style || null,
+                  transmission: vehicleData.transmission || null,
+                  euro_rating: vehicleData.euro_rating ? parseInt(vehicleData.euro_rating) : null
+                };
                 
-                if (!vehicle) {
-                  // Create new vehicle with all available fields matching database schema
-                  const newVehicle = {
-                    cap_code: vehicleData.cap_code || null,
-                    manufacturer: vehicleData.manufacturer?.toUpperCase(),
-                    model: vehicleData.model,
-                    variant: vehicleData.variant || vehicleData.model, // Use variant if available, otherwise model
-                    p11d: vehicleData.p11d ? parseFloat(vehicleData.p11d) : null,
-                    otr_price: vehicleData.otr_price ? parseFloat(vehicleData.otr_price) : null,
-                    fuel_type: vehicleData.fuel_type || null,
-                    co2_emissions: vehicleData.co2 ? parseInt(vehicleData.co2) : null,
-                    mpg: vehicleData.mpg ? parseFloat(vehicleData.mpg) : null,
-                    electric_range: vehicleData.electric_range ? parseInt(vehicleData.electric_range) : null,
-                    insurance_group: vehicleData.insurance_group ? parseInt(vehicleData.insurance_group) : null,
-                    body_style: vehicleData.body_style || null,
-                    transmission: vehicleData.transmission || null,
-                    euro_rating: vehicleData.euro_rating ? parseInt(vehicleData.euro_rating) : null
-                  };
-                  
-                  const insertedVehicles = await upsertVehicle(newVehicle);
-                  vehicle = insertedVehicles[0];
-                }
+                const insertedVehicles = await upsertVehicle(vehicleRecord);
+                vehicle = insertedVehicles[0];
 
                 // Insert pricing data
                 const pricingData = {
