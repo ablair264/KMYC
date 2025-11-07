@@ -3,8 +3,18 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY
 
-// Initialize Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Check if Supabase is properly configured
+const isSupabaseConfigured = supabaseUrl && supabaseAnonKey && 
+  supabaseUrl !== 'your_supabase_url_here' && 
+  supabaseAnonKey !== 'your_supabase_anon_key_here' &&
+  supabaseUrl.startsWith('http')
+
+// Initialize Supabase client only if properly configured
+export const supabase = isSupabaseConfigured ? 
+  createClient(supabaseUrl, supabaseAnonKey) : null
+
+// Export configuration status
+export const isConfigured = isSupabaseConfigured
 
 // Database functions for vehicle data management
 
@@ -12,6 +22,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
  * Insert or update vehicle data
  */
 export const upsertVehicle = async (vehicleData) => {
+  if (!supabase) {
+    throw new Error('Database not configured')
+  }
+
   const { data, error } = await supabase
     .from('vehicles')
     .upsert(vehicleData, {
@@ -136,38 +150,62 @@ export const getProviderMappings = async () => {
  * Match vehicle by various criteria
  */
 export const findMatchingVehicle = async (vehicleData) => {
+  if (!supabase) {
+    throw new Error('Database not configured')
+  }
+
   // First try exact CAP code match
   if (vehicleData.cap_code) {
-    const { data } = await supabase
-      .from('vehicles')
-      .select('*')
-      .eq('cap_code', vehicleData.cap_code)
-      .single()
-    
-    if (data) return data
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('cap_code', vehicleData.cap_code)
+        .maybeSingle()
+      
+      if (error && error.code !== 'PGRST116') {
+        console.warn('CAP code search error:', error)
+      }
+      if (data) return data
+    } catch (error) {
+      console.warn('CAP code search failed:', error)
+    }
   }
 
   // Try P11D + manufacturer + fuzzy model match
   if (vehicleData.p11d && vehicleData.manufacturer) {
-    const p11dTolerance = vehicleData.p11d * 0.02 // 2% tolerance
-    const { data } = await supabase
-      .from('vehicles')
-      .select('*')
-      .eq('manufacturer', vehicleData.manufacturer)
-      .gte('p11d', vehicleData.p11d - p11dTolerance)
-      .lte('p11d', vehicleData.p11d + p11dTolerance)
-      .limit(10)
+    try {
+      const p11dValue = parseFloat(vehicleData.p11d)
+      const p11dTolerance = p11dValue * 0.02 // 2% tolerance
+      const minP11d = Math.round((p11dValue - p11dTolerance) * 100) / 100
+      const maxP11d = Math.round((p11dValue + p11dTolerance) * 100) / 100
+      
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('manufacturer', vehicleData.manufacturer.toUpperCase())
+        .gte('p11d', minP11d)
+        .lte('p11d', maxP11d)
+        .limit(10)
 
-    if (data && data.length > 0) {
-      // Find best model match using simple string similarity
-      const modelMatches = data.map(vehicle => ({
-        ...vehicle,
-        similarity: calculateStringSimilarity(vehicleData.model || '', vehicle.model || '')
-      })).sort((a, b) => b.similarity - a.similarity)
-
-      if (modelMatches[0].similarity > 0.7) {
-        return modelMatches[0]
+      if (error) {
+        console.warn('P11D search error:', error)
+        return null
       }
+
+      if (data && data.length > 0) {
+        // Find best model match using simple string similarity
+        const modelMatches = data.map(vehicle => ({
+          ...vehicle,
+          similarity: calculateStringSimilarity(vehicleData.model || '', vehicle.model || '')
+        })).sort((a, b) => b.similarity - a.similarity)
+
+        if (modelMatches[0].similarity > 0.7) {
+          return modelMatches[0]
+        }
+      }
+    } catch (error) {
+      console.warn('P11D search failed:', error)
     }
   }
 
