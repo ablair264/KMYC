@@ -142,7 +142,7 @@ const FlexibleUpload = ({ onMappingComplete, onError }) => {
     setFieldMappings(savedMapping.column_mappings || {});
   };
 
-  const processWithSupabase = async (mappingData) => {
+  const processWithSupabase = async (mappingData, testMode = false) => {
     const batchId = crypto.randomUUID();
     const reader = new FileReader();
 
@@ -163,8 +163,9 @@ const FlexibleUpload = ({ onMappingComplete, onError }) => {
             });
           }
 
-          // Process each row
-          for (let i = 1; i < lines.length; i++) {
+          // Process each row (limit to 10 in test mode)
+          const maxRows = testMode ? Math.min(11, lines.length) : lines.length; // 11 because index 0 is header
+          for (let i = 1; i < maxRows; i++) {
             const row = lines[i].split(',').map(cell => cell.trim().replace(/"/g, ''));
             if (row.length < 3) continue;
 
@@ -316,7 +317,7 @@ const FlexibleUpload = ({ onMappingComplete, onError }) => {
     return 'Poor';
   };
 
-  const handleProceed = async () => {
+  const handleProceed = async (testMode = false) => {
     const missingRequired = validateMapping();
     if (missingRequired.length > 0) {
       onError(`Please map required fields: ${missingRequired.map(f => STANDARD_FIELDS[f].label).join(', ')}`);
@@ -340,7 +341,7 @@ const FlexibleUpload = ({ onMappingComplete, onError }) => {
             providerName: providerName.trim(),
             totalRows: fileData.totalRows,
             sampleData: fileData.sampleRows
-          })
+          }, testMode)
         : await onMappingComplete({
             file: selectedFile,
             headers: fileData.headers,
@@ -495,9 +496,14 @@ const FlexibleUpload = ({ onMappingComplete, onError }) => {
         </div>
 
         <div className="mapping-actions">
-          <button onClick={handleProceed} className="proceed-button">
-            Process {fileData.totalRows.toLocaleString()} Rows
-          </button>
+          <div className="action-buttons">
+            <button onClick={() => handleProceed(true)} className="test-button">
+              Test First 10 Rows
+            </button>
+            <button onClick={() => handleProceed(false)} className="proceed-button">
+              Process All {fileData.totalRows.toLocaleString()} Rows
+            </button>
+          </div>
           <div className="validation-info">
             {validateMapping().length === 0 ? (
               <span className="valid">✅ All required fields mapped</span>

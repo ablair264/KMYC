@@ -208,6 +208,11 @@ body {
   border-top: 1px solid #e2e8f0;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
 .proceed-button {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -220,11 +225,25 @@ body {
   transition: transform 0.2s;
 }
 
-.proceed-button:hover {
+.test-button {
+  background: linear-gradient(135deg, #4a90e2 0%, #7b68ee 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.proceed-button:hover,
+.test-button:hover {
   transform: translateY(-1px);
 }
 
-.proceed-button:disabled {
+.proceed-button:disabled,
+.test-button:disabled {
   background: #cbd5e0;
   cursor: not-allowed;
   transform: none;

@@ -39,12 +39,19 @@ export const upsertVehicle = async (vehicleData) => {
 }
 
 /**
- * Insert pricing data for a vehicle
+ * Insert or update pricing data for a vehicle
  */
 export const insertPricingData = async (pricingData) => {
+  if (!supabase) {
+    throw new Error('Database not configured')
+  }
+
   const { data, error } = await supabase
     .from('pricing_data')
-    .insert(pricingData)
+    .upsert(pricingData, {
+      onConflict: 'vehicle_id,provider_name,monthly_rental,term_months,annual_mileage',
+      ignoreDuplicates: false
+    })
     .select()
 
   if (error) throw error
