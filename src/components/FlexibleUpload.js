@@ -4,8 +4,7 @@ import {
   saveProviderMapping, 
   getProviderMappings, 
   upsertVehicle, 
-  insertPricingData,
-  findMatchingVehicle 
+  insertPricingData
 } from '../supabase';
 
 // Standard field definitions with descriptions
